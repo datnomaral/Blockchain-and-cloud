@@ -1,0 +1,32 @@
+{
+    "name": "rental-contract-contracts",
+    "version": "1.0.0",
+    "description": "Smart Contracts for Rental Contract DApp",
+    "scripts": {
+        "compile": "hardhat compile",
+        "test": "hardhat test",
+        "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+        "deploy:mumbai": "hardhat run scripts/deploy.ts --network mumbai",
+        "deploy:polygon": "hardhat run scripts/deploy.ts --network polygon",
+        "node": "hardhat node"
+    },
+    "keywords": [
+        "blockchain",
+        "smart-contract",
+        "solidity",
+        "hardhat"
+    ],
+    "author": "Q+T Team",
+    "license": "MIT",
+    "devDependencies": {
+        "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+        "@typechain/hardhat": "^9.1.0",
+        "hardhat": "^2.22.0",
+        "typescript": "^5.4.0",
+        "@types/node": "^20.0.0"
+    },
+    "dependencies": {
+        "@openzeppelin/contracts": "^5.0.0",
+        "dotenv": "^16.4.0"
+    }
+}
