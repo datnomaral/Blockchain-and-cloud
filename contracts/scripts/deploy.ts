@@ -7,8 +7,15 @@ async function main() {
     const RentalContractManager = await ethers.getContractFactory("RentalContractManager");
 
     // Deploy the contract
-    console.log("⏳ Deploying contract...");
-    const rentalContract = await RentalContractManager.deploy();
+    // Deploy the contract with custom gas settings to stay within 0.1 POL budget
+    console.log("⏳ Deploying contract with optimized gas settings...");
+    
+    // Attempting to deploy with fixed gas prices if the network allows
+    // This is a "best effort" to fit within 0.1 POL
+    const rentalContract = await RentalContractManager.deploy({
+        maxFeePerGas: ethers.parseUnits("30", "gwei"),
+        maxPriorityFeePerGas: ethers.parseUnits("30", "gwei"),
+    });
 
     await rentalContract.waitForDeployment();
 

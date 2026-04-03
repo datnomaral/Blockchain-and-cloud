@@ -6,9 +6,9 @@ const prisma = new PrismaClient();
 
 export const chatWithAI = async (req: Request, res: Response) => {
     try {
-        const { message, history } = req.body;
-        // TEMPORARY DEBUG: Hardcode key to verify
-        const apiKey = "AIzaSyC5kQzFEkcMYx85dqTUTpymnbS7DRDHWe4";
+        const { message, history = [] } = req.body;
+        // Lấy API Key từ biến môi trường, phòng hờ lấy hardcode
+        const apiKey = process.env.GEMINI_API_KEY || "AIzaSyC5kQzFEkcMYx85dqTUTpymnbS7DRDHWe4";
 
         if (!apiKey) {
             return res.status(500).json({
@@ -51,24 +51,17 @@ export const chatWithAI = async (req: Request, res: Response) => {
    + Mô tả: ${(p.description || '').substring(0, 100)}...`
         ).join('\n');
 
-        // 4. Xây dựng System Prompt (Nhân cách & Kiến thức)
+        // 4. Xây dựng System Prompt cực kỳ đơn giản (Ngắn gọn, báo giá)
         const systemPrompt = `
-Bạn là RentalBot - Trợ lý ảo AI cao cấp của nền tảng RentalContract.
-Nhiệm vụ của bạn là tư vấn cho khách hàng tìm thuê phòng trọ một cách nhiệt tình, chuyên nghiệp và lôi cuốn như một người bạn.
+Chào bạn, tôi là trợ lý AI tìm phòng trọ. Tôi chỉ trả lời thật ngắn gọn về giá cả, địa chỉ và số điện thoại chủ nhà.
 
-DỮ LIỆU PHÒNG TRỌ HIỆN CÓ (Chỉ tư vấn dựa trên danh sách này):
+DANH SÁCH PHÒNG CÓ THẬT:
 ${propertyContext}
 
-NGUYÊN TẮC TRẢ LỜI:
-1. **Giao tiếp tự nhiên**: Dùng ngôn ngữ đời thường, thân thiện, sử dụng emoji phù hợp (😊, 🏠, 💸, 🚀).
-2. **Trung thực**: Chỉ giới thiệu phòng có trong danh sách. Nếu không tìm thấy phòng phù hợp, hãy gợi ý phòng khác hoặc khuyên khách mở rộng khu vực tìm kiếm.
-3. **Chốt sale khéo léo**: Luôn khuyến khích khách đến xem phòng hoặc liên hệ chủ nhà.
-4. **Kiến thức bổ trợ**:
-   - Hợp đồng: Ký qua Blockchain, không lo lừa đảo, pháp lý rõ ràng.
-   - Thanh toán: Hỗ trợ tiền mặt hoặc Crypto (ETH).
-   - Cọc: Thường là 1 tháng tiền nhà.
-
-HÃY TRẢ LỜI NGẮN GỌN, ĐI VÀO TRỌNG TÂM. Đừng viết quá dài dòng.
+Nguyên tắc:
+1. Hỏi gì đáp nấy, không nói dài.
+2. Nếu có phòng phù hợp thì báo Giá và Địa chỉ.
+3. Không tìm thấy thì báo "Hiện không có phòng giá này".
 `;
 
         // 5. Bắt đầu cuộc hội thoại
@@ -80,13 +73,13 @@ HÃY TRẢ LỜI NGẮN GỌN, ĐI VÀO TRỌNG TÂM. Đừng viết quá dài d
                 },
                 {
                     role: "model",
-                    parts: [{ text: "Đã rõ! Tôi là RentalBot, sẵn sàng phục vụ. Tôi sẽ tư vấn dựa trên danh sách phòng bạn cung cấp với phong cách thân thiện, chuyên nghiệp." }],
+                    parts: [{ text: "Tôi hiểu, hãy đưa ra câu hỏi tìm phòng." }],
                 },
-                // Map lịch sử chat cũ vào (nếu có)
-                ...history.map((h: any) => ({
+                // Map lịch sử chat cũ vào an toàn
+                ...(Array.isArray(history) ? history.map((h: any) => ({
                     role: h.sender === 'user' ? 'user' : 'model',
-                    parts: [{ text: h.text }],
-                }))
+                    parts: [{ text: h.text || '' }],
+                })) : [])
             ],
         });
 

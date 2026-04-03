@@ -297,36 +297,4 @@ contract RentalContractManager {
     function getAllContractHashes() external view returns (bytes32[] memory) {
         return contractHashes;
     }
-
-    /**
-     * @dev Get contracts by user (landlord or tenant)
-     * @param _user Address of the user
-     * @return Array of contract hashes where user is involved
-     */
-    function getContractsByUser(address _user) external view returns (bytes32[] memory) {
-        uint256 count = 0;
-        
-        // Count contracts
-        for (uint256 i = 0; i < contractHashes.length; i++) {
-            ContractInfo memory contractInfo = contracts[contractHashes[i]];
-            if (contractInfo.landlord == _user || contractInfo.tenant == _user) {
-                count++;
-            }
-        }
-
-        // Create array
-        bytes32[] memory userContracts = new bytes32[](count);
-        uint256 index = 0;
-
-        // Fill array
-        for (uint256 i = 0; i < contractHashes.length; i++) {
-            ContractInfo memory contractInfo = contracts[contractHashes[i]];
-            if (contractInfo.landlord == _user || contractInfo.tenant == _user) {
-                userContracts[index] = contractHashes[i];
-                index++;
-            }
-        }
-
-        return userContracts;
-    }
 }

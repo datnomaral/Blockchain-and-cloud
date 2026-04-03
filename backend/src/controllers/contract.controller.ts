@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 // Validation schema
 const createContractSchema = z.object({
     propertyId: z.string().uuid(),
-    tenantId: z.string().uuid(),
+    tenantEmail: z.string().email(),
     startDate: z.string(),
     endDate: z.string(),
     monthlyRent: z.number().positive(),
@@ -58,6 +58,20 @@ export const createContract = async (req: Request, res: Response) => {
             });
         }
 
+        // Validate tenant email
+        const tenant = await prisma.user.findUnique({
+            where: { email: contractData.tenantEmail },
+        });
+
+        if (!tenant) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy người thuê với email này. Vui lòng kiểm tra lại.',
+            });
+        }
+
+        const tenantId = tenant.id;
+
         if (property.ownerId !== userId) {
             return res.status(403).json({
                 success: false,
@@ -66,15 +80,18 @@ export const createContract = async (req: Request, res: Response) => {
         }
 
         // Generate contract hash
+        const { tenantEmail, ...restContractData } = contractData;
         const contractHash = generateContractHash({
-            ...contractData,
+            ...restContractData,
+            tenantId,
             landlordId: userId,
         });
 
         // Create contract
         const contract = await prisma.contract.create({
             data: {
-                ...contractData,
+                ...restContractData,
+                tenantId,
                 landlordId: userId,
                 startDate: new Date(contractData.startDate),
                 endDate: new Date(contractData.endDate),

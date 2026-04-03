@@ -113,9 +113,11 @@ export default function CreateContractPage() {
             if (data.success) {
                 const contract = data.data.contract;
 
-                // Nếu cả hai bên đều đã có ví, tự động tạo bản ghi hợp đồng trên blockchain
-                try {
-                    if (contract.contractHash && contract.tenant.walletAddress) {
+                // Nếu cả hai bên đều đã có ví, bắt buộc tạo bản ghi hợp đồng trên blockchain
+                if (contract.contractHash && contract.tenant.walletAddress) {
+                    try {
+                        toast.loading('Đang khởi tạo hợp đồng trên Blockchain...', { id: 'blockchain-loading' });
+                        
                         const txHash = await onChainCreateContract({
                             contractHash: contract.contractHash,
                             tenantWallet: contract.tenant.walletAddress,
@@ -124,17 +126,27 @@ export default function CreateContractPage() {
                         });
 
                         console.info('On-chain createContract txHash:', txHash);
-                    } else {
-                        console.info('Bỏ qua tạo on-chain (thiếu contractHash hoặc ví tenant)');
+                        toast.success('Hợp đồng đã được lưu lên Blockchain!', { id: 'blockchain-loading' });
+                        
+                        toast.success('Tạo hợp đồng thành công!');
+                        router.push('/contracts');
+                    } catch (chainError: any) {
+                        console.error('Lỗi khi ghi hợp đồng lên blockchain:', chainError);
+                        
+                        // Xử lý lỗi từ MetaMask (User rejected) hoặc lỗi mạng
+                        const errorMessage = chainError?.message?.includes('user rejected') 
+                            ? 'Bạn đã từ chối giao dịch trên MetaMask. Vui lòng tạo lại và xác nhận để lưu lên Blockchain.'
+                            : 'Không thể ghi hợp đồng lên blockchain. Vui lòng kiểm tra ví và thử lại.';
+                        
+                        toast.error(errorMessage, { id: 'blockchain-loading', duration: 5000 });
+                        setLoading(false);
+                        return; // Dừng lại, không chuyển trang
                     }
-                } catch (chainError) {
-                    console.error('Lỗi khi ghi hợp đồng lên blockchain:', chainError);
-                    // Không chặn luồng chính, chỉ cảnh báo
-                    toast.error('Không thể ghi hợp đồng lên blockchain, nhưng đã tạo trong hệ thống.');
+                } else {
+                    // Trường hợp này hiếm gặp nếu đã chạy script fix_wallet
+                    toast.success('Hợp đồng đã được tạo (Lưu ý: Chưa có ví người thuê nên chưa lưu lên Blockchain)');
+                    router.push('/contracts');
                 }
-
-                toast.success('Tạo hợp đồng thành công!');
-                router.push('/contracts');
             } else {
                 toast.error(data.message || 'Có lỗi xảy ra');
             }

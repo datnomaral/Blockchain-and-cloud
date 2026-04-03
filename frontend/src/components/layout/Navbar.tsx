@@ -1,20 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaWallet, FaBars, FaTimes } from 'react-icons/fa';
 import { MdDashboard } from 'react-icons/md';
+import { connectWallet as connectWalletUtil } from '@/utils/wallet';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isWalletConnected, setIsWalletConnected] = useState(false);
     const [walletAddress, setWalletAddress] = useState('');
 
-    const connectWallet = async () => {
-        // Will be implemented with Web3 logic
-        setIsWalletConnected(true);
-        setWalletAddress('0x1234...5678');
+    useEffect(() => {
+        // Kiểm tra xem đã kết nối ví trước đó chưa
+        const checkConnection = async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    setIsWalletConnected(true);
+                    setWalletAddress(`${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`);
+                }
+            }
+        };
+        checkConnection();
+
+        // Lắng nghe sự kiện đổi tài khoản
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts: string[]) => {
+                if (accounts.length > 0) {
+                    setWalletAddress(`${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`);
+                    setIsWalletConnected(true);
+                } else {
+                    setIsWalletConnected(false);
+                    setWalletAddress('');
+                }
+            });
+        }
+    }, []);
+
+    const handleConnectWallet = async () => {
+        try {
+            const wallet = await connectWalletUtil();
+            if (wallet) {
+                setIsWalletConnected(true);
+                const shortAddress = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
+                setWalletAddress(shortAddress);
+                toast.success('Kết nối ví thành công!');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Lỗi kết nối ví');
+        }
     };
 
     const navLinks = [
@@ -60,7 +97,7 @@ export default function Navbar() {
                             </div>
                         ) : (
                             <button
-                                onClick={connectWallet}
+                                onClick={handleConnectWallet}
                                 className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
                             >
                                 <FaWallet />
@@ -107,7 +144,7 @@ export default function Navbar() {
                                     </Link>
                                 ))}
                                 <button
-                                    onClick={connectWallet}
+                                    onClick={handleConnectWallet}
                                     className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-xl font-semibold"
                                 >
                                     <FaWallet />

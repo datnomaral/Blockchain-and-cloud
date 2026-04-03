@@ -76,7 +76,6 @@ export interface RentalContractManagerInterface extends Interface {
       | "createContract"
       | "getAllContractHashes"
       | "getContract"
-      | "getContractsByUser"
       | "getTotalContracts"
       | "markDepositPaid"
       | "markDepositRefunded"
@@ -116,10 +115,6 @@ export interface RentalContractManagerInterface extends Interface {
   encodeFunctionData(
     functionFragment: "getContract",
     values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getContractsByUser",
-    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getTotalContracts",
@@ -165,10 +160,6 @@ export interface RentalContractManagerInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "getContract",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getContractsByUser",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -450,12 +441,6 @@ export interface RentalContractManager extends BaseContract {
     "view"
   >;
 
-  getContractsByUser: TypedContractMethod<
-    [_user: AddressLike],
-    [string[]],
-    "view"
-  >;
-
   getTotalContracts: TypedContractMethod<[], [bigint], "view">;
 
   markDepositPaid: TypedContractMethod<
@@ -568,9 +553,6 @@ export interface RentalContractManager extends BaseContract {
     [RentalContractManager.ContractInfoStructOutput],
     "view"
   >;
-  getFunction(
-    nameOrSignature: "getContractsByUser"
-  ): TypedContractMethod<[_user: AddressLike], [string[]], "view">;
   getFunction(
     nameOrSignature: "getTotalContracts"
   ): TypedContractMethod<[], [bigint], "view">;

@@ -116,20 +116,31 @@ export default function ContractDetailPage() {
             // Sign with MetaMask (off-chain)
             const signature = await signMessage(message);
 
-            // Ghi chữ ký và transaction hash (nếu có) lên backend + blockchain
+            // Ghi chữ ký và transaction hash lên blockchain TRƯỚC khi gọi backend
             let txHash: string | undefined;
 
-            try {
-                if (contract.contractHash) {
+            if (contract.contractHash) {
+                try {
+                    toast.loading('Đang ghi nhận chữ ký lên Blockchain...', { id: 'signing-blockchain' });
                     txHash = await onChainSignContract(contract.contractHash);
-                } else {
-                    console.warn('Contract chưa có hash, bỏ qua ghi on-chain');
+                    console.info('On-chain signContract txHash:', txHash);
+                    toast.success('Chữ ký đã được ghi lên Blockchain!', { id: 'signing-blockchain' });
+                } catch (chainError: any) {
+                    console.error('Lỗi khi ký hợp đồng trên blockchain:', chainError);
+                    
+                    const errorMessage = chainError?.message?.includes('user rejected') 
+                        ? 'Bạn đã từ chối giao dịch trên MetaMask. Vui lòng ký lại và xác nhận để hoàn tất.'
+                        : 'Không thể ghi nhận chữ ký lên blockchain. Vui lòng thử lại sau.';
+                    
+                    toast.error(errorMessage, { id: 'signing-blockchain', duration: 5000 });
+                    setSigning(false);
+                    return; // Dừng lại, không gọi backend
                 }
-            } catch (chainError: any) {
-                console.error('Lỗi khi ký hợp đồng trên blockchain:', chainError);
-                toast.error('Không thể ký hợp đồng trên blockchain, thử lại sau.');
+            } else {
+                console.warn('Contract chưa có hash, bỏ qua ghi on-chain');
             }
 
+            // Gọi backend để lưu chữ ký và txHash
             const token = localStorage.getItem('token');
             const res = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/${contract.id}/sign`,
@@ -147,9 +158,9 @@ export default function ContractDetailPage() {
 
             if (data.success) {
                 toast.success('Ký hợp đồng thành công! ✅');
-                fetchContract(); // Reload contract
+                fetchContract(); // Tải lại thông tin hợp đồng
             } else {
-                toast.error(data.message || 'Không thể ký hợp đồng');
+                toast.error(data.message || 'Không thể lưu chữ ký vào hệ thống');
             }
         } catch (error: any) {
             toast.error(error.message || 'Lỗi khi ký hợp đồng');

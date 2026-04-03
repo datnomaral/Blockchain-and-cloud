@@ -15,6 +15,41 @@ export const connectWallet = async (): Promise<WalletInfo | null> => {
         // Request account access
         await window.ethereum.request({ method: 'eth_requestAccounts' });
 
+        // Check and switch network if necessary
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        const amoyChainId = '0x13882'; // 80002 in hex
+
+        if (chainId !== amoyChainId) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: amoyChainId }],
+                });
+            } catch (switchError: any) {
+                // This error code indicates that the chain has not been added to MetaMask.
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [
+                            {
+                                chainId: amoyChainId,
+                                chainName: 'Polygon Amoy Testnet',
+                                nativeCurrency: {
+                                    name: 'POL',
+                                    symbol: 'POL',
+                                    decimals: 18,
+                                },
+                                rpcUrls: ['https://rpc-amoy.polygon.technology/'],
+                                blockExplorerUrls: ['https://amoy.polygonscan.com/'],
+                            },
+                        ],
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const address = await signer.getAddress();
