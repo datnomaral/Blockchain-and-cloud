@@ -2,15 +2,54 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaRobot, FaPaperPlane, FaTimes, FaMinus, FaCommentDots, FaMapMarkerAlt, FaDollarSign } from 'react-icons/fa';
+import { FaRobot, FaPaperPlane, FaTimes, FaMinus, FaCommentDots, FaMapMarkerAlt, FaDollarSign, FaSearch, FaFileContract, FaPlusCircle, FaInfoCircle } from 'react-icons/fa';
 import Link from 'next/link';
+
+// Format bot text: render line breaks, bold, bullets
+function formatBotText(text: string) {
+    return text
+        .split('\n')
+        .map((line, i) => {
+            // Parse **bold**
+            let formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Parse *italic*
+            formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            // Bullet points
+            if (formatted.trim().startsWith('- ') || formatted.trim().startsWith('• ')) {
+                formatted = `<span class="flex gap-1.5 items-start"><span class="text-blue-500 mt-0.5">•</span><span>${formatted.trim().substring(2)}</span></span>`;
+            }
+            return formatted;
+        })
+        .join('<br/>');
+}
+
+// Quick reply suggestions
+interface QuickReply {
+    text: string;
+    icon: React.ReactNode;
+}
+
+const WELCOME_QUICK_REPLIES: QuickReply[] = [
+    { text: 'Tìm phòng trọ', icon: <FaSearch className="text-[10px]" /> },
+    { text: 'Đăng tin cho thuê', icon: <FaPlusCircle className="text-[10px]" /> },
+    { text: 'Hợp đồng blockchain', icon: <FaFileContract className="text-[10px]" /> },
+    { text: 'Hệ thống có gì?', icon: <FaInfoCircle className="text-[10px]" /> },
+];
+
+const AFTER_REPLY_SUGGESTIONS: string[] = [
+    'Phòng quận 1',
+    'Giá dưới 3 triệu',
+    'Cách đăng tin?',
+    'Tạo hợp đồng',
+];
 
 interface Message {
     id: string;
     text: string;
     sender: 'user' | 'bot';
     timestamp: Date;
-    relatedProperties?: Property[]; // Bot có thể trả về danh sách phòng
+    relatedProperties?: Property[];
+    showQuickReplies?: boolean; // Hiển thị nút gợi ý
 }
 
 interface Property {
@@ -30,9 +69,10 @@ export default function Chatbot() {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
-            text: 'Xin chào! 👋 Tôi là RentalBot thông minh. Tôi có thể giúp bạn tìm phòng trọ, giải đáp thắc mắc về hợp đồng và giá cả. Bạn đang tìm phòng ở khu vực nào?',
+            text: 'Xin chào! 👋 Tôi là RentalBot.\nTôi có thể giúp bạn tìm phòng, đăng tin hoặc tạo hợp đồng.\nBạn cần gì nào? 😊',
             sender: 'bot',
             timestamp: new Date(),
+            showQuickReplies: true,
         },
     ]);
     const [properties, setProperties] = useState<Property[]>([]);
@@ -88,34 +128,47 @@ export default function Chatbot() {
         }
     };
 
-    const handleSendMessage = async (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (!inputValue.trim()) return;
+    // Send message (from input or quick reply)
+    const sendMessage = async (text: string) => {
+        if (!text.trim() || isTyping) return;
 
         const userMsg: Message = {
             id: Date.now().toString(),
-            text: inputValue,
+            text: text,
             sender: 'user',
             timestamp: new Date(),
         };
 
-        const newMessages = [...messages, userMsg];
+        // Ẩn quick replies ở tin nhắn cũ
+        setMessages(prev => prev.map(msg => ({ ...msg, showQuickReplies: false })));
+
+        const newMessages = [...messages.map(msg => ({ ...msg, showQuickReplies: false })), userMsg];
         setMessages(newMessages);
         setInputValue('');
         setIsTyping(true);
 
         // Call API
-        const { text, relatedProps } = await processMessage(userMsg.text, newMessages);
+        const { text: replyText, relatedProps } = await processMessage(text, newMessages);
 
         const botResponse: Message = {
             id: (Date.now() + 1).toString(),
-            text: text,
+            text: replyText,
             sender: 'bot',
             timestamp: new Date(),
-            relatedProperties: relatedProps
+            relatedProperties: relatedProps,
+            showQuickReplies: true, // Hiện gợi ý sau mỗi reply
         };
         setMessages((prev) => [...prev, botResponse]);
         setIsTyping(false);
+    };
+
+    const handleSendMessage = async (e?: React.FormEvent) => {
+        e?.preventDefault();
+        await sendMessage(inputValue);
+    };
+
+    const handleQuickReply = async (text: string) => {
+        await sendMessage(text);
     };
 
     const formatPrice = (price: number) => {
@@ -134,7 +187,7 @@ export default function Chatbot() {
                         initial={{ opacity: 0, y: 20, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        className="mb-4 w-80 md:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-[600px]"
+                        className="mb-4 w-[360px] md:w-[440px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-[600px]"
                     >
                         {/* Header */}
                         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 flex items-center justify-between text-white shadow-md">
@@ -172,13 +225,20 @@ export default function Chatbot() {
                                             </div>
                                         )}
                                         <div
-                                            className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${msg.sender === 'user'
-                                                ? 'bg-blue-600 text-white rounded-tr-none'
-                                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none'
+                                            className={`p-3 rounded-2xl text-sm shadow-sm leading-relaxed ${msg.sender === 'user'
+                                                ? 'max-w-[75%] bg-blue-600 text-white rounded-tr-none'
+                                                : 'max-w-[90%] bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none'
                                                 }`}
                                         >
-                                            {msg.text}
-                                            <p className={`text-[10px] mt-1 text-right ${msg.sender === 'user' ? 'text-blue-200' : 'text-slate-400'
+                                            {msg.sender === 'bot' ? (
+                                                <div
+                                                    className="whitespace-pre-line [&>br]:block [&>br]:mt-1 chatbot-content"
+                                                    dangerouslySetInnerHTML={{ __html: formatBotText(msg.text) }}
+                                                />
+                                            ) : (
+                                                <span>{msg.text}</span>
+                                            )}
+                                            <p className={`text-[10px] mt-2 text-right ${msg.sender === 'user' ? 'text-blue-200' : 'text-slate-400'
                                                 }`}>
                                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </p>
@@ -215,6 +275,27 @@ export default function Chatbot() {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Quick Reply Buttons */}
+                                    {msg.sender === 'bot' && msg.showQuickReplies && !isTyping && (
+                                        <div className="pl-10 pt-1">
+                                            <div className="flex flex-wrap gap-2">
+                                                {(msg.id === '1' ? WELCOME_QUICK_REPLIES : AFTER_REPLY_SUGGESTIONS.map(s => ({ text: s, icon: null }))).map((qr, idx) => (
+                                                    <motion.button
+                                                        key={idx}
+                                                        initial={{ opacity: 0, y: 5 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: idx * 0.08 }}
+                                                        onClick={() => handleQuickReply(qr.text)}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:border-blue-300 transition-all active:scale-95"
+                                                    >
+                                                        {qr.icon}
+                                                        {qr.text}
+                                                    </motion.button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
 
@@ -241,7 +322,7 @@ export default function Chatbot() {
                                 type="text"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
-                                placeholder="Tìm phòng quận 1, giá dưới 5tr..."
+                                placeholder="Nhắn tin cho RentalBot..."
                                 className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             />
                             <button

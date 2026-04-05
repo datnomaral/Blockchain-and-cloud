@@ -4,103 +4,156 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const prisma = new PrismaClient();
 
+const MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+];
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Lấy dữ liệu phòng từ DB
+async function getPropertyData(): Promise<string> {
+    try {
+        const properties = await prisma.property.findMany({
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            select: {
+                title: true, price: true, address: true,
+                district: true, city: true, type: true,
+                description: true, available: true,
+                owner: { select: { fullName: true, phone: true } }
+            }
+        });
+
+        if (properties.length > 0) {
+            return properties.map((p, i) =>
+                `${i + 1}. [${p.available ? 'CÒN TRỐNG' : 'ĐÃ THUÊ'}] ${p.title} | ${new Intl.NumberFormat('vi-VN').format(p.price)} VND/tháng | ${p.address}, ${p.district}, ${p.city} | LH: ${p.owner.fullName} (${p.owner.phone}) | ${p.type}`
+            ).join('\n');
+        }
+    } catch (err: any) {
+        console.log('DB unavailable, AI sẽ trả lời chung');
+    }
+    return '';
+}
+
+// System Prompt
+function buildSystemPrompt(propertyData: string): string {
+    const dataSection = propertyData
+        ? `\nDANH SÁCH PHÒNG HIỆN CÓ:\n${propertyData}`
+        : '\n(Hiện chưa có dữ liệu phòng trong hệ thống)';
+
+    return `Bạn là RentalBot — trợ lý AI của hệ thống quản lý hợp đồng cho thuê phòng trọ tại TP.HCM, tích hợp blockchain.
+
+CÁCH TRẢ LỜI:
+- Ngắn gọn, dễ đọc, thân thiện
+- Mỗi ý trên 1 dòng riêng, dùng emoji phù hợp
+- Khi liệt kê phòng: mỗi phòng xuống dòng, ghi rõ Tên - Giá - Địa chỉ - SĐT
+- KHÔNG viết thành đoạn văn dài liên tục
+- KHÔNG dùng markdown (**, ##)
+
+VÍ DỤ CÁCH TRẢ LỜI TÌM PHÒNG:
+"Tôi tìm thấy 2 phòng phù hợp:
+
+🏠 Phòng trọ Quận 1
+💰 4.500.000 VND/tháng
+📍 123 Nguyễn Trãi, Q1
+📞 Anh Minh: 0901-234-567
+
+🏠 Studio Quận 7
+💰 3.200.000 VND/tháng
+📍 45 Nguyễn Thị Thập, Q7
+📞 Chị Lan: 0912-345-678
+
+Bạn muốn xem phòng nào?"
+${dataSection}
+
+CÁC TÍNH NĂNG CỦA HỆ THỐNG (ĐÃ CÓ, ĐANG HOẠT ĐỘNG):
+
+1. TÌM PHÒNG TRỌ:
+   Vào mục "Danh sách phòng" trên thanh menu để xem và lọc phòng theo quận, giá, loại phòng
+
+2. ĐĂNG TIN CHO THUÊ:
+   Chủ nhà đăng nhập → vào "Bảng điều khiển" → nhấn "Đăng tin mới"
+   Điền thông tin phòng: tiêu đề, giá, địa chỉ, quận, loại phòng, mô tả
+
+3. HỢP ĐỒNG THUÊ (BLOCKCHAIN):
+   Vào mục "Hợp đồng" → nhấn "Tạo hợp đồng mới"
+   Ký hợp đồng điện tử, được lưu trên blockchain (Polygon)
+   Hợp đồng minh bạch, không ai có thể chỉnh sửa sau khi ký
+   Có thể xác minh và tải về bản PDF
+
+4. QUẢN LÝ TÀI KHOẢN:
+   Nhấn "Đăng ký" hoặc "Đăng nhập" trên góc phải
+   Vào "Bảng điều khiển" để quản lý phòng và hợp đồng của mình
+
+QUAN TRỌNG: KHÔNG BAO GIỜ hiển thị đường dẫn URL (như /properties, /auth...) cho người dùng. Hãy dùng tên nút/menu bằng tiếng Việt.
+Nếu chào hỏi → chào ngắn gọn, hỏi cần giúp gì.
+Nếu không có phòng phù hợp → gợi ý tìm khu vực/giá khác.
+Chỉ trả lời liên quan đến phòng trọ, hợp đồng, và tính năng hệ thống.`;
+}
+
 export const chatWithAI = async (req: Request, res: Response) => {
     try {
         const { message, history = [] } = req.body;
-        // Lấy API Key từ biến môi trường, phòng hờ lấy hardcode
-        const apiKey = process.env.GEMINI_API_KEY || "AIzaSyC5kQzFEkcMYx85dqTUTpymnbS7DRDHWe4";
+        const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            return res.status(500).json({
-                success: false,
-                message: 'Server chưa cấu hình GEMINI_API_KEY.',
-                reply: 'Xin lỗi, tôi chưa được cấp "giấy phép hoạt động" (thiếu API Key). Bạn hãy báo chủ nhà cấu hình giúp tôi nhé! 🛠️'
+            return res.status(200).json({
+                success: true,
+                data: { reply: 'Xin lỗi, hệ thống chưa được cấu hình API Key. Vui lòng báo quản trị viên! 🛠️' }
             });
         }
 
-        // 1. Khởi tạo Google Gemini AI
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+        const propertyData = await getPropertyData();
+        const systemPrompt = buildSystemPrompt(propertyData);
 
-        // 2. Lấy dữ liệu phòng trọ thực tế từ Database (RAG - Retrieval Augmented Generation)
-        const properties = await prisma.property.findMany({
-            take: 15, // Lấy 15 phòng mới nhất
-            orderBy: { createdAt: 'desc' },
-            select: {
-                title: true,
-                price: true,
-                address: true,
-                district: true,
-                city: true,
-                type: true,
-                description: true,
-                available: true,
-                owner: {
-                    select: { fullName: true, phone: true }
+        for (const modelName of MODELS) {
+            try {
+                console.log(`Trying model: ${modelName}...`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+
+                const chat = model.startChat({
+                    history: [
+                        { role: "user", parts: [{ text: systemPrompt }] },
+                        { role: "model", parts: [{ text: "Xin chào! 👋 Tôi là RentalBot.\nBạn muốn tìm phòng ở khu vực nào?\nHãy cho tôi biết quận và mức giá mong muốn nhé! 😊" }] },
+                        ...(Array.isArray(history) ? history.map((h: any) => ({
+                            role: h.sender === 'user' ? 'user' : 'model',
+                            parts: [{ text: h.text || '' }],
+                        })) : [])
+                    ],
+                });
+
+                const result = await chat.sendMessage(message);
+                const text = (await result.response).text();
+                console.log(`✅ ${modelName} OK`);
+
+                return res.status(200).json({ success: true, data: { reply: text } });
+
+            } catch (modelError: any) {
+                console.error(`❌ ${modelName} failed:`, modelError?.message);
+                if (modelError?.message?.includes('429')) {
+                    await delay(2000);
+                    continue;
                 }
+                if (modelError?.message?.includes('API_KEY') || modelError?.message?.includes('403')) break;
+                continue;
             }
-        });
+        }
 
-        // 3. Tạo Context dữ liệu cho AI
-        const propertyContext = properties.map(p =>
-            `- [${p.available ? 'CÒN TRỐNG' : 'ĐÃ THUÊ'}] ${p.title}
-   + Giá: ${new Intl.NumberFormat('vi-VN').format(p.price)} VND/tháng
-   + Địa chỉ: ${p.address}, ${p.district}, ${p.city}
-   + Loại: ${p.type}
-   + Liên hệ chủ nhà: ${p.owner.fullName} (${p.owner.phone})
-   + Mô tả: ${(p.description || '').substring(0, 100)}...`
-        ).join('\n');
-
-        // 4. Xây dựng System Prompt cực kỳ đơn giản (Ngắn gọn, báo giá)
-        const systemPrompt = `
-Chào bạn, tôi là trợ lý AI tìm phòng trọ. Tôi chỉ trả lời thật ngắn gọn về giá cả, địa chỉ và số điện thoại chủ nhà.
-
-DANH SÁCH PHÒNG CÓ THẬT:
-${propertyContext}
-
-Nguyên tắc:
-1. Hỏi gì đáp nấy, không nói dài.
-2. Nếu có phòng phù hợp thì báo Giá và Địa chỉ.
-3. Không tìm thấy thì báo "Hiện không có phòng giá này".
-`;
-
-        // 5. Bắt đầu cuộc hội thoại
-        const chat = model.startChat({
-            history: [
-                {
-                    role: "user",
-                    parts: [{ text: systemPrompt }],
-                },
-                {
-                    role: "model",
-                    parts: [{ text: "Tôi hiểu, hãy đưa ra câu hỏi tìm phòng." }],
-                },
-                // Map lịch sử chat cũ vào an toàn
-                ...(Array.isArray(history) ? history.map((h: any) => ({
-                    role: h.sender === 'user' ? 'user' : 'model',
-                    parts: [{ text: h.text || '' }],
-                })) : [])
-            ],
-        });
-
-        // 6. Gửi tin nhắn mới
-        const result = await chat.sendMessage(message);
-        const response = await result.response;
-        const text = response.text();
-
+        // Fallback
         return res.status(200).json({
             success: true,
-            data: {
-                reply: text
-            }
+            data: { reply: 'Hiện tại tôi đang bận xíu 😅\nBạn thử lại sau 1 phút nhé!\nHoặc xem danh sách phòng trên trang chủ.' }
         });
 
-    } catch (error) {
-        console.error('Chat AI Error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Lỗi xử lý AI',
-            reply: 'Xin lỗi, não bộ tôi đang bị quá tải xíu. Bạn hỏi lại câu khác nhé! 🤯'
+    } catch (error: any) {
+        console.error('=== CHAT ERROR ===', error?.message);
+        return res.status(200).json({
+            success: true,
+            data: { reply: 'Xin lỗi, có lỗi xảy ra.\nBạn thử lại sau nhé! 🤯' }
         });
     }
 };
