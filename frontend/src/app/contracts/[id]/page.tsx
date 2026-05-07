@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FaFileContract, FaCheckCircle, FaWallet, FaClipboard, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaFileContract, FaCheckCircle, FaWallet, FaClipboard, FaCopy, FaExternalLinkAlt, FaDownload } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { connectWallet, signMessage } from '@/utils/wallet';
 import { onChainSignContract } from '@/utils/contract';
@@ -44,6 +44,7 @@ export default function ContractDetailPage() {
     const [contract, setContract] = useState<Contract | null>(null);
     const [loading, setLoading] = useState(true);
     const [signing, setSigning] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
@@ -174,6 +175,41 @@ export default function ContractDetailPage() {
         toast.success('Đã sao chép!');
     };
 
+    const handleExportPdf = async () => {
+        if (!contract) return;
+
+        setExportingPdf(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/${contract.id}/pdf`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                throw new Error(errorData?.message || 'Không thể xuất file PDF');
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `contract-${contract.id}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success('Đã tải file PDF');
+        } catch (error: any) {
+            toast.error(error.message || 'Lỗi khi xuất file PDF');
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
@@ -196,6 +232,8 @@ export default function ContractDetailPage() {
 
         return false;
     };
+
+    const canExportPdf = contract?.status === 'SIGNED' || contract?.status === 'ACTIVE';
 
     if (loading) {
         return (
@@ -408,6 +446,24 @@ export default function ContractDetailPage() {
                                     <div className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl font-semibold text-center">
                                         Đang chờ bên còn lại ký...
                                     </div>
+                                )}
+
+                                {canExportPdf && (
+                                    <button
+                                        onClick={handleExportPdf}
+                                        disabled={exportingPdf}
+                                        className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-500/30 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                    >
+                                        {exportingPdf ? (
+                                            <>
+                                                <div className="spinner w-5 h-5 border-white"></div> Đang xuất PDF...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FaDownload /> Xuất file PDF
+                                            </>
+                                        )}
+                                    </button>
                                 )}
 
                                 <button

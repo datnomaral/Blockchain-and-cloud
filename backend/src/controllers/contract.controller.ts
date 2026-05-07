@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+﻿import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
@@ -54,7 +54,7 @@ export const createContract = async (req: Request, res: Response) => {
         if (!property) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy phòng trọ',
+                message: 'KhÃ´ng tÃ¬m tháº¥y phÃ²ng trá»',
             });
         }
 
@@ -66,7 +66,7 @@ export const createContract = async (req: Request, res: Response) => {
         if (!tenant) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy người thuê với email này. Vui lòng kiểm tra lại.',
+                message: 'KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i thuÃª vá»›i email nÃ y. Vui lÃ²ng kiá»ƒm tra láº¡i.',
             });
         }
 
@@ -75,7 +75,7 @@ export const createContract = async (req: Request, res: Response) => {
         if (property.ownerId !== userId) {
             return res.status(403).json({
                 success: false,
-                message: 'Bạn không có quyền tạo hợp đồng cho phòng này',
+                message: 'Báº¡n khÃ´ng cÃ³ quyá»n táº¡o há»£p Ä‘á»“ng cho phÃ²ng nÃ y',
             });
         }
 
@@ -123,14 +123,14 @@ export const createContract = async (req: Request, res: Response) => {
 
         res.status(201).json({
             success: true,
-            message: 'Tạo hợp đồng thành công',
+            message: 'Táº¡o há»£p Ä‘á»“ng thÃ nh cÃ´ng',
             data: { contract },
         });
     } catch (error: any) {
         console.error('Create contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lỗi khi tạo hợp đồng',
+            message: error.message || 'Lá»—i khi táº¡o há»£p Ä‘á»“ng',
         });
     }
 };
@@ -192,7 +192,7 @@ export const getContracts = async (req: Request, res: Response) => {
         console.error('Get contracts error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lỗi khi lấy danh sách hợp đồng',
+            message: error.message || 'Lá»—i khi láº¥y danh sÃ¡ch há»£p Ä‘á»“ng',
         });
     }
 };
@@ -233,7 +233,7 @@ export const getContractById = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy hợp đồng',
+                message: 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng',
             });
         }
 
@@ -241,7 +241,7 @@ export const getContractById = async (req: Request, res: Response) => {
         if (contract.landlordId !== userId && contract.tenantId !== userId) {
             return res.status(403).json({
                 success: false,
-                message: 'Bạn không có quyền xem hợp đồng này',
+                message: 'Báº¡n khÃ´ng cÃ³ quyá»n xem há»£p Ä‘á»“ng nÃ y',
             });
         }
 
@@ -253,7 +253,7 @@ export const getContractById = async (req: Request, res: Response) => {
         console.error('Get contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lỗi khi lấy thông tin hợp đồng',
+            message: error.message || 'Lá»—i khi láº¥y thÃ´ng tin há»£p Ä‘á»“ng',
         });
     }
 };
@@ -274,7 +274,7 @@ export const signContract = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy hợp đồng',
+                message: 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng',
             });
         }
 
@@ -285,7 +285,7 @@ export const signContract = async (req: Request, res: Response) => {
         if (!isLandlord && !isTenant) {
             return res.status(403).json({
                 success: false,
-                message: 'Bạn không có quyền ký hợp đồng này',
+                message: 'Báº¡n khÃ´ng cÃ³ quyá»n kÃ½ há»£p Ä‘á»“ng nÃ y',
             });
         }
 
@@ -338,14 +338,14 @@ export const signContract = async (req: Request, res: Response) => {
 
         res.json({
             success: true,
-            message: 'Ký hợp đồng thành công',
+            message: 'KÃ½ há»£p Ä‘á»“ng thÃ nh cÃ´ng',
             data: { contract: updatedContract },
         });
     } catch (error: any) {
         console.error('Sign contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lỗi khi ký hợp đồng',
+            message: error.message || 'Lá»—i khi kÃ½ há»£p Ä‘á»“ng',
         });
     }
 };
@@ -384,13 +384,13 @@ export const verifyContract = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy hợp đồng với hash này',
+                message: 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng vá»›i hash nÃ y',
             });
         }
 
         res.json({
             success: true,
-            message: 'Hợp đồng hợp lệ',
+            message: 'Há»£p Ä‘á»“ng há»£p lá»‡',
             data: {
                 verified: true,
                 contract: {
@@ -408,7 +408,7 @@ export const verifyContract = async (req: Request, res: Response) => {
         console.error('Verify contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lỗi khi xác minh hợp đồng',
+            message: error.message || 'Lá»—i khi xÃ¡c minh há»£p Ä‘á»“ng',
         });
     }
 };
@@ -419,6 +419,7 @@ export const verifyContract = async (req: Request, res: Response) => {
 export const generateContractPDF = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+        const userId = (req as any).user.userId;
 
         const contract = await prisma.contract.findUnique({
             where: { id },
@@ -432,11 +433,24 @@ export const generateContractPDF = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy hợp đồng',
+                message: 'Khong tim thay hop dong',
             });
         }
 
-        // Ensure uploads directory exists
+        if (contract.landlordId !== userId && contract.tenantId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Ban khong co quyen tai PDF hop dong nay',
+            });
+        }
+
+        if (contract.status !== 'SIGNED' && contract.status !== 'ACTIVE') {
+            return res.status(400).json({
+                success: false,
+                message: 'Chi co the xuat PDF sau khi hop dong da ky xong',
+            });
+        }
+
         const uploadsDir = path.join(__dirname, '..', '..', 'uploads', 'contracts');
         if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
@@ -448,78 +462,102 @@ export const generateContractPDF = async (req: Request, res: Response) => {
         const writeStream = fs.createWriteStream(filePath);
         doc.pipe(writeStream);
 
-        // Title
-        doc.fontSize(20).text('HỢP ĐỒNG THUÊ NHÀ/DỊCH VỤ', { align: 'center' });
+        const fontCandidates = [
+            { regular: 'C:\\Windows\\Fonts\\arial.ttf', bold: 'C:\\Windows\\Fonts\\arialbd.ttf' },
+            { regular: 'C:\\Windows\\Fonts\\tahoma.ttf', bold: 'C:\\Windows\\Fonts\\tahomabd.ttf' },
+        ];
+
+        let hasCustomFont = false;
+        for (const candidate of fontCandidates) {
+            if (fs.existsSync(candidate.regular) && fs.existsSync(candidate.bold)) {
+                doc.registerFont('ContractRegular', candidate.regular);
+                doc.registerFont('ContractBold', candidate.bold);
+                hasCustomFont = true;
+                break;
+            }
+        }
+
+        const useRegular = () => doc.font(hasCustomFont ? 'ContractRegular' : 'Helvetica');
+        const useBold = () => doc.font(hasCustomFont ? 'ContractBold' : 'Helvetica-Bold');
+        const formatMoney = (value: number) =>
+            new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+        const formatDate = (value: Date) => new Date(value).toLocaleDateString('vi-VN');
+
+        useBold();
+        doc.fontSize(20).text('HOP DONG THUE NHA/DICH VU', { align: 'center' });
         doc.moveDown();
 
-        // Basic info
+        useRegular();
         doc.fontSize(12);
-        doc.text(`Mã hợp đồng: ${contract.id}`);
-        doc.text(`Trạng thái: ${contract.status}`);
+        doc.text(`Ma hop dong: ${contract.id}`);
+        doc.text(`Trang thai: ${contract.status}`);
         if (contract.contractHash) {
             doc.text(`Contract Hash: ${contract.contractHash}`);
         }
         doc.moveDown();
 
-        // Parties
-        doc.font('Helvetica-Bold').text('BÊN CHO THUÊ (Bên A):');
-        doc.font('Helvetica').text(`Họ tên: ${contract.landlord.fullName}`);
+        useBold();
+        doc.text('BEN CHO THUE (Ben A):');
+        useRegular();
+        doc.text(`Ho ten: ${contract.landlord.fullName}`);
         doc.text(`Email: ${contract.landlord.email}`);
         if (contract.landlord.phone) {
-            doc.text(`SĐT: ${contract.landlord.phone}`);
+            doc.text(`SDT: ${contract.landlord.phone}`);
         }
         if (contract.landlord.walletAddress) {
-            doc.text(`Ví: ${contract.landlord.walletAddress}`);
+            doc.text(`Vi: ${contract.landlord.walletAddress}`);
         }
         doc.moveDown();
 
-        doc.font('Helvetica-Bold').text('BÊN THUÊ (Bên B):');
-        doc.font('Helvetica').text(`Họ tên: ${contract.tenant.fullName}`);
+        useBold();
+        doc.text('BEN THUE (Ben B):');
+        useRegular();
+        doc.text(`Ho ten: ${contract.tenant.fullName}`);
         doc.text(`Email: ${contract.tenant.email}`);
         if (contract.tenant.phone) {
-            doc.text(`SĐT: ${contract.tenant.phone}`);
+            doc.text(`SDT: ${contract.tenant.phone}`);
         }
         if (contract.tenant.walletAddress) {
-            doc.text(`Ví: ${contract.tenant.walletAddress}`);
+            doc.text(`Vi: ${contract.tenant.walletAddress}`);
         }
         doc.moveDown();
 
-        // Property
-        doc.font('Helvetica-Bold').text('THÔNG TIN PHÒNG/ĐỊA ĐIỂM:');
-        doc.font('Helvetica').text(`Tiêu đề: ${contract.property.title}`);
-        doc.text(`Địa chỉ: ${contract.property.address}, ${contract.property.ward}, ${contract.property.district}, ${contract.property.city}`);
+        useBold();
+        doc.text('THONG TIN PHONG/DIA DIEM:');
+        useRegular();
+        doc.text(`Tieu de: ${contract.property.title}`);
+        doc.text(`Dia chi: ${contract.property.address}, ${contract.property.ward}, ${contract.property.district}, ${contract.property.city}`);
         doc.moveDown();
 
-        // Terms
-        doc.font('Helvetica-Bold').text('ĐIỀU KHOẢN HỢP ĐỒNG:');
+        useBold();
+        doc.text('DIEU KHOAN HOP DONG:');
         doc.moveDown(0.5);
-        doc.font('Helvetica').fontSize(11).text(contract.terms, {
-            align: 'justify',
-        });
+        useRegular();
+        doc.fontSize(11).text(contract.terms, { align: 'justify' });
         doc.moveDown();
 
-        // Payment info
-        doc.fontSize(12).font('Helvetica-Bold').text('THÔNG TIN THANH TOÁN:');
-        doc.font('Helvetica');
-        doc.text(`Tiền thuê hàng tháng: ${contract.monthlyRent} VND`);
-        doc.text(`Tiền đặt cọc: ${contract.deposit} VND`);
-        doc.text(`Ngày thanh toán hàng tháng: Ngày ${contract.paymentDay}`);
+        useBold();
+        doc.fontSize(12).text('THONG TIN THANH TOAN:');
+        useRegular();
+        doc.text(`Tien thue hang thang: ${formatMoney(contract.monthlyRent)}`);
+        doc.text(`Tien dat coc: ${formatMoney(contract.deposit)}`);
+        doc.text(`Ngay thanh toan hang thang: Ngay ${contract.paymentDay}`);
         doc.moveDown();
 
-        // Dates
-        doc.font('Helvetica-Bold').text('THỜI HẠN HỢP ĐỒNG:');
-        doc.font('Helvetica');
-        doc.text(`Ngày bắt đầu: ${contract.startDate.toISOString().substring(0, 10)}`);
-        doc.text(`Ngày kết thúc: ${contract.endDate.toISOString().substring(0, 10)}`);
+        useBold();
+        doc.text('THOI HAN HOP DONG:');
+        useRegular();
+        doc.text(`Ngay bat dau: ${formatDate(contract.startDate)}`);
+        doc.text(`Ngay ket thuc: ${formatDate(contract.endDate)}`);
         doc.moveDown();
 
-        // Signatures info
-        doc.font('Helvetica-Bold').text('TRẠNG THÁI KÝ KẾT:');
-        doc.font('Helvetica');
-        doc.text(`Bên A đã ký: ${contract.landlordSignature ? 'Có' : 'Chưa'}`);
-        doc.text(`Bên B đã ký: ${contract.tenantSignature ? 'Có' : 'Chưa'}`);
+        useBold();
+        doc.text('TRANG THAI KY KET:');
+        useRegular();
+        doc.text(`Ben A da ky: ${contract.landlordSignature ? 'Co' : 'Chua'}`);
+        doc.text(`Ben B da ky: ${contract.tenantSignature ? 'Co' : 'Chua'}`);
         if (contract.signedAt) {
-            doc.text(`Thời gian ký hoàn tất: ${contract.signedAt.toISOString()}`);
+            doc.text(`Thoi gian ky hoan tat: ${new Date(contract.signedAt).toLocaleString('vi-VN')}`);
         }
         if (contract.blockchainTxHash) {
             doc.text(`Blockchain Tx Hash: ${contract.blockchainTxHash}`);
@@ -547,14 +585,14 @@ export const generateContractPDF = async (req: Request, res: Response) => {
             console.error('Generate PDF write error:', err);
             res.status(500).json({
                 success: false,
-                message: 'Lỗi khi tạo file PDF',
+                message: 'Loi khi tao file PDF',
             });
         });
     } catch (error: any) {
         console.error('Generate PDF error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lỗi khi tạo PDF',
+            message: error.message || 'Loi khi tao PDF',
         });
     }
 };
