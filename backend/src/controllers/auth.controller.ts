@@ -133,7 +133,7 @@ export const login = async (req: Request, res: Response) => {
  */
 export const connectWallet = async (req: Request, res: Response) => {
     try {
-        const { walletAddress } = req.body;
+        const { walletAddress, forceRelink } = req.body;
         const userId = (req as any).user.userId;
 
         if (!walletAddress) {
@@ -148,10 +148,17 @@ export const connectWallet = async (req: Request, res: Response) => {
             where: { walletAddress },
         });
 
-        if (existingWallet && existingWallet.id !== userId) {
+        if (existingWallet && existingWallet.id !== userId && !forceRelink) {
             return res.status(400).json({
                 success: false,
                 message: 'Ví này đã được kết nối với tài khoản khác',
+            });
+        }
+
+        if (existingWallet && existingWallet.id !== userId && forceRelink) {
+            await prisma.user.update({
+                where: { id: existingWallet.id },
+                data: { walletAddress: null },
             });
         }
 
@@ -163,8 +170,12 @@ export const connectWallet = async (req: Request, res: Response) => {
                 id: true,
                 email: true,
                 fullName: true,
+                phone: true,
                 walletAddress: true,
                 role: true,
+                isVerified: true,
+                createdAt: true,
+                updatedAt: true,
             },
         });
 
@@ -178,6 +189,43 @@ export const connectWallet = async (req: Request, res: Response) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Lỗi khi kết nối ví',
+        });
+    }
+};
+
+/**
+ * Disconnect wallet from account
+ */
+export const disconnectWallet = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.userId;
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: { walletAddress: null },
+            select: {
+                id: true,
+                email: true,
+                fullName: true,
+                phone: true,
+                walletAddress: true,
+                role: true,
+                isVerified: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        res.json({
+            success: true,
+            message: 'Da huy ket noi vi thanh cong',
+            data: { user },
+        });
+    } catch (error: any) {
+        console.error('Disconnect wallet error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Loi khi huy ket noi vi',
         });
     }
 };

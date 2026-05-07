@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, connectWallet, getProfile } from '../controllers/auth.controller';
+import { register, login, connectWallet, disconnectWallet, getProfile } from '../controllers/auth.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -24,6 +24,13 @@ router.post('/login', login);
  * @access  Private
  */
 router.post('/connect-wallet', authMiddleware, connectWallet);
+
+/**
+ * @route   POST /api/auth/disconnect-wallet
+ * @desc    Disconnect MetaMask wallet from account
+ * @access  Private
+ */
+router.post('/disconnect-wallet', authMiddleware, disconnectWallet);
 
 /**
  * @route   GET /api/auth/profile

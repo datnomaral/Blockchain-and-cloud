@@ -29,6 +29,16 @@ export default function DashboardPage() {
 
         setUser(JSON.parse(userData));
         fetchStats(token);
+
+        const syncUser = () => {
+            const updatedUser = localStorage.getItem('user');
+            if (updatedUser) {
+                setUser(JSON.parse(updatedUser));
+            }
+        };
+
+        window.addEventListener('storage', syncUser);
+        return () => window.removeEventListener('storage', syncUser);
     }, [router]);
 
     const fetchStats = async (token: string) => {

@@ -61,6 +61,26 @@ export const connectWallet = async (): Promise<WalletInfo | null> => {
     }
 };
 
+export const selectWallet = async (): Promise<WalletInfo | null> => {
+    if (typeof window.ethereum === 'undefined') {
+        throw new Error('MetaMask chưa được cài đặt');
+    }
+
+    try {
+        await window.ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }],
+        });
+    } catch (error: any) {
+        if (error?.code === 4001) {
+            throw new Error('Bạn đã hủy chọn ví');
+        }
+        throw error;
+    }
+
+    return connectWallet();
+};
+
 export const signMessage = async (message: string): Promise<string> => {
     const wallet = await connectWallet();
     if (!wallet) throw new Error('Chưa kết nối ví');
