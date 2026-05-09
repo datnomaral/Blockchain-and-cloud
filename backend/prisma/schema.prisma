@@ -24,6 +24,12 @@ enum ContractStatus {
   TERMINATED    // Đã hủy
 }
 
+enum InvoiceStatus {
+  UNPAID        // Chưa đóng
+  PAID          // Đã đóng
+  OVERDUE       // Quá hạn
+}
+
 enum PropertyType {
   ROOM          // Phòng trọ
   APARTMENT     // Căn hộ
@@ -115,6 +121,7 @@ model Contract {
   property          Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   landlord          User            @relation("LandlordContracts", fields: [landlordId], references: [id])
   tenant            User            @relation("TenantContracts", fields: [tenantId], references: [id])
+  invoices          Invoice[]
 
   @@index([propertyId])
   @@index([landlordId])
@@ -138,4 +145,28 @@ model BlockchainTransaction {
   @@index([txHash])
   @@index([contractHash])
   @@map("blockchain_transactions")
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  contractId  String        @map("contract_id")
+  
+  amount      Float         // Số tiền cần đóng
+  description String?       // Mô tả (VD: Tiền phòng tháng 5 + điện nước)
+  month       Int           // Tháng thu tiền
+  year        Int           // Năm thu tiền
+  dueDate     DateTime      @map("due_date") // Hạn chót đóng tiền
+  
+  status      InvoiceStatus @default(UNPAID)
+  paidAt      DateTime?     @map("paid_at") // Ngày thực nhận tiền
+  
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  contract    Contract      @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([month, year])
+  @@map("invoices")
 }

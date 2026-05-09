@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FaHome, FaFileContract, FaWallet, FaSignOutAlt } from 'react-icons/fa';
-
 import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
@@ -18,7 +17,6 @@ export default function DashboardPage() {
     });
 
     useEffect(() => {
-        // Check auth
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
 
@@ -43,13 +41,11 @@ export default function DashboardPage() {
 
     const fetchStats = async (token: string) => {
         try {
-            // Fetch properties
             const propsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/properties`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const propsData = await propsRes.json();
 
-            // Fetch contracts
             const contractsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/contracts`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -85,8 +81,6 @@ export default function DashboardPage() {
     }
 
     return (
-
-
         <main className="flex-1 container mx-auto px-4 py-12">
             {/* Header */}
             <div className="mb-8">
@@ -99,7 +93,7 @@ export default function DashboardPage() {
             </div>
 
             {/* User Info Card */}
-            <div className="glass-card p-6 rounded-2xl mb-8">
+            <div className="glass-card p-6 rounded-2xl mb-8 border border-white/20">
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-bold mb-4">Thông tin tài khoản</h2>
@@ -111,15 +105,15 @@ export default function DashboardPage() {
                             {user.phone && <p><span className="font-semibold">SĐT:</span> {user.phone}</p>}
                             {user.walletAddress && (
                                 <p className="flex items-center gap-2">
-                                    <FaWallet className="text-green-600" />
-                                    <span className="font-mono text-xs">{user.walletAddress.slice(0, 10)}...{user.walletAddress.slice(-8)}</span>
+                                    <FaWallet className="text-emerald-600" />
+                                    <span className="font-mono text-xs text-slate-500">{user.walletAddress.slice(0, 10)}...{user.walletAddress.slice(-8)}</span>
                                 </p>
                             )}
                         </div>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-semibold transition-colors"
                     >
                         <FaSignOutAlt />
                         Đăng xuất
@@ -132,18 +126,18 @@ export default function DashboardPage() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-card p-6 rounded-2xl"
+                    className="bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800 p-6 rounded-3xl"
                 >
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm">Tổng bất động sản</p>
-                            <p className="text-3xl font-bold mt-2">{stats.properties}</p>
+                            <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Tổng bất động sản</p>
+                            <p className="text-3xl font-black mt-2">{stats.properties}</p>
                         </div>
-                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                            <FaHome className="text-2xl text-blue-600" />
+                        <div className="w-12 h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl">
+                            <FaHome className="text-xl" />
                         </div>
                     </div>
-                    <Link href="/properties" className="text-blue-600 hover:underline text-sm font-semibold">
+                    <Link href="/properties" className="text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors">
                         Xem tất cả →
                     </Link>
                 </motion.div>
@@ -152,18 +146,18 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="glass-card p-6 rounded-2xl"
+                    className="bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800 p-6 rounded-3xl"
                 >
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm">Tổng hợp đồng</p>
-                            <p className="text-3xl font-bold mt-2">{stats.contracts}</p>
+                            <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Tổng hợp đồng</p>
+                            <p className="text-3xl font-black mt-2">{stats.contracts}</p>
                         </div>
-                        <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                            <FaFileContract className="text-2xl text-purple-600" />
+                        <div className="w-12 h-12 flex items-center justify-center bg-purple-50 text-purple-600 rounded-xl">
+                            <FaFileContract className="text-xl" />
                         </div>
                     </div>
-                    <Link href="/contracts" className="text-purple-600 hover:underline text-sm font-semibold">
+                    <Link href="/contracts" className="text-purple-600 hover:text-purple-700 text-sm font-semibold transition-colors">
                         Xem tất cả →
                     </Link>
                 </motion.div>
@@ -172,62 +166,69 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="glass-card p-6 rounded-2xl"
+                    className="bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800 p-6 rounded-3xl"
                 >
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm">Hợp đồng đang hoạt động</p>
-                            <p className="text-3xl font-bold mt-2">{stats.activeContracts}</p>
+                            <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Hợp đồng H.động</p>
+                            <p className="text-3xl font-black mt-2 text-emerald-600">{stats.activeContracts}</p>
                         </div>
-                        <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                            <FaFileContract className="text-2xl text-green-600" />
+                        <div className="w-12 h-12 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl">
+                            <FaFileContract className="text-xl" />
                         </div>
                     </div>
-                    <Link href="/contracts?status=ACTIVE" className="text-green-600 hover:underline text-sm font-semibold">
+                    <Link href="/contracts?status=ACTIVE" className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold transition-colors">
                         Xem chi tiết →
                     </Link>
                 </motion.div>
             </div>
 
             {/* Quick Actions */}
-            <div className="glass-card p-6 rounded-2xl">
-                <h2 className="text-xl font-bold mb-4">Hành động nhanh</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="glass-card p-8 rounded-3xl border border-white/20">
+                <h2 className="text-xl font-bold mb-6">Hành động nhanh</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {user.role === 'LANDLORD' && (
                         <>
-                            <Link href="/properties/create" className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="text-3xl">🏠</div>
+                            <Link href="/properties/create" className="p-5 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl hover:-translate-y-1 transition-transform cursor-pointer">
+                                <div className="flex items-center gap-4">
+                                    <div className="text-4xl">🏠</div>
                                     <div>
-                                        <p className="font-semibold">Đăng tin mới</p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Thêm bất động sản</p>
+                                        <p className="font-bold text-slate-800 dark:text-slate-100">Đăng tin mới</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">Thêm bất động sản</p>
                                     </div>
                                 </div>
                             </Link>
-                            <Link href="/contracts/create" className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="text-3xl">📝</div>
+                            <Link href="/contracts/create" className="p-5 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl hover:-translate-y-1 transition-transform cursor-pointer">
+                                <div className="flex items-center gap-4">
+                                    <div className="text-4xl">📝</div>
                                     <div>
-                                        <p className="font-semibold">Tạo hợp đồng</p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Hợp đồng mới</p>
+                                        <p className="font-bold text-slate-800 dark:text-slate-100">Tạo hợp đồng</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">Lập HĐ ký trên chuỗi</p>
                                     </div>
                                 </div>
                             </Link>
                         </>
                     )}
-                    <Link href="/properties" className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="text-3xl">🔍</div>
+                    <Link href="/properties" className="p-5 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-2xl hover:-translate-y-1 transition-transform cursor-pointer">
+                        <div className="flex items-center gap-4">
+                            <div className="text-4xl">🔍</div>
                             <div>
-                                <p className="font-semibold">Tìm phòng</p>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Khám phá phòng trọ</p>
+                                <p className="font-bold text-slate-800 dark:text-slate-100">Tìm phòng</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Duyệt phòng trọ mới</p>
+                            </div>
+                        </div>
+                    </Link>
+                    <Link href="/invoices" className="p-5 bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/20 border border-violet-400 rounded-2xl hover:-translate-y-1 transition-transform cursor-pointer">
+                        <div className="flex items-center gap-4">
+                            <div className="text-4xl drop-shadow-sm">💸</div>
+                            <div>
+                                <p className="font-bold">Thanh toán</p>
+                                <p className="text-xs text-white/80 mt-0.5">Đóng tiền, xem hóa đơn</p>
                             </div>
                         </div>
                     </Link>
                 </div>
             </div>
         </main>
-
-
     );
 }

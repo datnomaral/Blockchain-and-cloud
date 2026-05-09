@@ -133,6 +133,7 @@ export default function Navbar() {
         { href: '/', label: 'Trang chủ' },
         { href: '/contracts', label: 'Hợp đồng' },
         { href: '/properties', label: 'Phòng trọ' },
+        { href: '/invoices', label: 'Thanh toán' },
         { href: '/about', label: 'Giới thiệu' },
     ];
 

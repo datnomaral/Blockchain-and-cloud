@@ -7,6 +7,8 @@ import contractRoutes from './routes/contract.routes';
 import propertyRoutes from './routes/property.routes';
 import userRoutes from './routes/user.routes';
 import chatRoutes from './routes/chat.routes';
+import adminRoutes from './routes/admin.routes';
+import invoiceRoutes from './routes/invoice.routes';
 
 dotenv.config();
 
@@ -27,6 +29,8 @@ app.use('/api/contracts', contractRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
