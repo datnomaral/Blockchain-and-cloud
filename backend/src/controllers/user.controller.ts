@@ -52,17 +52,19 @@ export const updateUser = async (req: Request, res: Response) => {
             });
         }
 
-        const { fullName, phone } = req.body;
+        const { fullName, phone, bankAccount, bankName } = req.body;
 
         const user = await prisma.user.update({
             where: { id },
-            data: { fullName, phone },
+            data: { fullName, phone, bankAccount, bankName },
             select: {
                 id: true,
                 email: true,
                 fullName: true,
                 phone: true,
                 walletAddress: true,
+                bankAccount: true,
+                bankName: true,
                 role: true,
             },
         });

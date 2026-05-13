@@ -55,6 +55,8 @@ model User {
   isVerified    Boolean     @default(false) @map("is_verified")
   status        UserStatus  @default(ACTIVE)
   banReason     String?     @map("ban_reason")
+  bankAccount   String?     @map("bank_account")  // Số tài khoản ngân hàng
+  bankName      String?     @map("bank_name")      // Tên ngân hàng (VD: MB, VCB, TCB)
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 

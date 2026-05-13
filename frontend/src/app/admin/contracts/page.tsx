@@ -12,14 +12,15 @@ const formatMoney = (n: number) =>
 const formatDate = (d: string | Date) => new Date(d).toLocaleDateString('vi-VN');
 
 const STATUS_MAP: Record<string, { label: string; badgeCls: string; dotCls: string }> = {
-    DRAFT:      { label: 'Bản nháp',      badgeCls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', dotCls: 'bg-slate-400' },
-    PENDING:    { label: 'Chờ ký',        badgeCls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', dotCls: 'bg-amber-500' },
-    SIGNED:     { label: 'Đã ký',         badgeCls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', dotCls: 'bg-blue-500' },
+    DRAFT:      { label: 'Bản nháp',      badgeCls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',           dotCls: 'bg-slate-400' },
+    PENDING:    { label: 'Chờ ký',        badgeCls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',         dotCls: 'bg-amber-500' },
+    SIGNED:     { label: 'Đã ký',         badgeCls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',             dotCls: 'bg-blue-500' },
     ACTIVE:     { label: 'Đang hiệu lực', badgeCls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', dotCls: 'bg-emerald-500' },
-    EXPIRED:    { label: 'Hết hạn',       badgeCls: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400', dotCls: 'bg-red-500' },
-    TERMINATED: { label: 'Đã hủy',        badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400', dotCls: 'bg-gray-400' },
+    EXPIRED:    { label: 'Hết hạn',       badgeCls: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',                 dotCls: 'bg-red-500' },
+    TERMINATED: { label: 'Đã hủy',        badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',               dotCls: 'bg-gray-400' },
 };
 
+// ── Modal wrapper ─────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
     useEffect(() => {
         const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -34,7 +35,9 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
                 className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
                 <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                     <h3 className="font-bold text-lg">{title}</h3>
-                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><FaTimes size={14} /></button>
+                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <FaTimes size={14} />
+                    </button>
                 </div>
                 <div className="p-6 overflow-y-auto">{children}</div>
             </motion.div>
@@ -42,6 +45,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     );
 }
 
+// ── View modal ────────────────────────────────────────────────────────
 function ViewModal({ item, onClose }: any) {
     const st = STATUS_MAP[item.status] || STATUS_MAP.DRAFT;
     return (
@@ -52,19 +56,19 @@ function ViewModal({ item, onClose }: any) {
             </div>
             <div className="space-y-2">
                 {[
-                    { label: 'Phòng', value: `${item.property?.title} — ${item.property?.city}` },
-                    { label: 'Chủ nhà', value: `${item.landlord?.fullName} (${item.landlord?.email})` },
-                    { label: 'Người thuê', value: `${item.tenant?.fullName} (${item.tenant?.email})` },
-                    { label: 'Giá thuê', value: formatMoney(item.monthlyRent) },
-                    { label: 'Đặt cọc', value: formatMoney(item.deposit) },
-                    { label: 'Thời hạn', value: `${formatDate(item.startDate)} → ${formatDate(item.endDate)}` },
-                    { label: 'Ngày TT', value: `Ngày ${item.paymentDay} hàng tháng` },
-                    { label: 'Ký chủ nhà', value: item.landlordSignature ? '✅ Đã ký' : '⏳ Chưa ký' },
-                    { label: 'Ký người thuê', value: item.tenantSignature ? '✅ Đã ký' : '⏳ Chưa ký' },
-                    ...(item.signedAt ? [{ label: 'Thời gian ký', value: formatDate(item.signedAt) }] : []),
-                    ...(item.contractHash ? [{ label: 'Hash', value: item.contractHash.slice(0, 20) + '...' }] : []),
-                    ...(item.blockchainTxHash ? [{ label: 'Blockchain Tx', value: item.blockchainTxHash.slice(0, 20) + '...' }] : []),
-                    { label: 'Ngày tạo', value: formatDate(item.createdAt) },
+                    { label: 'Phòng',        value: `${item.property?.title} — ${item.property?.city}` },
+                    { label: 'Chủ nhà',      value: `${item.landlord?.fullName} (${item.landlord?.email})` },
+                    { label: 'Người thuê',   value: `${item.tenant?.fullName} (${item.tenant?.email})` },
+                    { label: 'Giá thuê',     value: formatMoney(item.monthlyRent) },
+                    { label: 'Đặt cọc',      value: formatMoney(item.deposit) },
+                    { label: 'Thời hạn',     value: `${formatDate(item.startDate)} → ${formatDate(item.endDate)}` },
+                    { label: 'Ngày TT',      value: `Ngày ${item.paymentDay} hàng tháng` },
+                    { label: 'Ký chủ nhà',   value: item.landlordSignature ? '✅ Đã ký' : '⏳ Chưa ký' },
+                    { label: 'Ký người thuê',value: item.tenantSignature   ? '✅ Đã ký' : '⏳ Chưa ký' },
+                    ...(item.signedAt        ? [{ label: 'Thời gian ký',  value: formatDate(item.signedAt) }] : []),
+                    ...(item.contractHash    ? [{ label: 'Hash',          value: item.contractHash.slice(0, 20) + '...' }] : []),
+                    ...(item.blockchainTxHash? [{ label: 'Blockchain Tx', value: item.blockchainTxHash.slice(0, 20) + '...' }] : []),
+                    { label: 'Ngày tạo',     value: formatDate(item.createdAt) },
                 ].map(row => (
                     <div key={row.label} className="flex justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
                         <span className="text-xs text-slate-500 shrink-0">{row.label}</span>
@@ -76,6 +80,7 @@ function ViewModal({ item, onClose }: any) {
     );
 }
 
+// ── Status modal ──────────────────────────────────────────────────────
 function StatusModal({ item, onClose, onSave }: any) {
     const [status, setStatus] = useState(item.status);
     return (
@@ -88,7 +93,11 @@ function StatusModal({ item, onClose, onSave }: any) {
                 <div className="grid grid-cols-2 gap-2">
                     {Object.entries(STATUS_MAP).map(([k, v]) => (
                         <button key={k} onClick={() => setStatus(k)}
-                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${status === k ? 'border-violet-500 ' + v.badgeCls : 'border-transparent ' + v.badgeCls + ' opacity-50 hover:opacity-80'}`}>
+                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
+                                status === k
+                                    ? 'border-violet-500 ' + v.badgeCls
+                                    : 'border-transparent ' + v.badgeCls + ' opacity-50 hover:opacity-80'
+                            }`}>
                             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${v.dotCls}`} />
                             {v.label}
                         </button>
@@ -106,13 +115,45 @@ function StatusModal({ item, onClose, onSave }: any) {
     );
 }
 
+// ── Terminate modal ───────────────────────────────────────────────────
+function TerminateModal({ item, onClose, onConfirm }: any) {
+    const [reason, setReason] = useState('');
+    return (
+        <Modal title="Hủy hợp đồng" onClose={onClose}>
+            <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm">
+                <p className="font-semibold">{item.property?.title}</p>
+                <p className="text-xs text-slate-400 mt-1">{item.landlord?.fullName} → {item.tenant?.fullName}</p>
+            </div>
+            <p className="text-sm text-slate-500 mb-3">Nhập lý do hủy hợp đồng. Hành động không thể hoàn tác.</p>
+            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3}
+                placeholder="VD: Hai bên thỏa thuận chấm dứt hợp đồng trước hạn..."
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none mb-4" />
+            <div className="flex gap-3">
+                <button onClick={onClose}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Hủy bỏ
+                </button>
+                <button onClick={() => onConfirm(item.id, reason)}
+                    className="flex-1 py-2.5 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 transition-colors">
+                    Xác nhận hủy HĐ
+                </button>
+            </div>
+        </Modal>
+    );
+}
+
+// ── Confirm delete modal ──────────────────────────────────────────────
 function ConfirmModal({ title, desc, onConfirm, onClose }: any) {
     return (
         <Modal title={title} onClose={onClose}>
             <p className="text-slate-600 dark:text-slate-400 mb-6">{desc}</p>
             <div className="flex gap-3">
-                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Hủy</button>
-                <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
+                <button onClick={onClose}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Hủy
+                </button>
+                <button onClick={onConfirm}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
                     <FaTrash size={12} /> Xóa
                 </button>
             </div>
@@ -120,14 +161,15 @@ function ConfirmModal({ title, desc, onConfirm, onClose }: any) {
     );
 }
 
+// ── Main page ─────────────────────────────────────────────────────────
 export default function AdminContractsPage() {
-    const [items, setItems]           = useState<any[]>([]);
-    const [pagination, setPagination] = useState<any>(null);
-    const [loading, setLoading]       = useState(true);
-    const [search, setSearch]         = useState('');
+    const [items, setItems]               = useState<any[]>([]);
+    const [pagination, setPagination]     = useState<any>(null);
+    const [loading, setLoading]           = useState(true);
+    const [search, setSearch]             = useState('');
     const [statusFilter, setStatusFilter] = useState('');
-    const [page, setPage]             = useState(1);
-    const [modal, setModal] = useState<{ mode: 'view' | 'status' | 'delete' | 'terminate'; item: any } | null>(null);
+    const [page, setPage]                 = useState(1);
+    const [modal, setModal]               = useState<{ mode: 'view' | 'status' | 'delete' | 'terminate'; item: any } | null>(null);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
 
@@ -147,7 +189,10 @@ export default function AdminContractsPage() {
     useEffect(() => { load(); }, [load]);
 
     const del = async (id: string) => {
-        const r = await fetch(`${API}/api/admin/contracts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        const r = await fetch(`${API}/api/admin/contracts/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        });
         const d = await r.json();
         if (d.success) { toast.success('Đã xóa hợp đồng'); load(); setModal(null); }
         else toast.error(d.message);
@@ -193,14 +238,18 @@ export default function AdminContractsPage() {
                 <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                     className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-violet-500 outline-none">
                     <option value="">Tất cả trạng thái</option>
-                    {Object.entries(STATUS_MAP).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    {Object.entries(STATUS_MAP).map(([k, v]) => (
+                        <option key={k} value={k}>{v.label}</option>
+                    ))}
                 </select>
             </div>
 
             {/* Table */}
             {loading ? (
                 <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => <div key={i} className="h-16 rounded-2xl bg-slate-200 dark:bg-slate-800 animate-pulse" />)}
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="h-16 rounded-2xl bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                    ))}
                 </div>
             ) : (
                 <>
@@ -210,7 +259,9 @@ export default function AdminContractsPage() {
                                 <thead>
                                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
                                         {['Chủ nhà', 'Người thuê', 'Phòng', 'Giá / Tháng', 'Thời hạn', 'Trạng thái', ''].map(h => (
-                                            <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                                            <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                                {h}
+                                            </th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -232,7 +283,9 @@ export default function AdminContractsPage() {
                                                     <p className="text-xs text-slate-400">{c.property?.city}</p>
                                                 </td>
                                                 <td className="px-5 py-4">
-                                                    <p className="font-bold text-sm text-violet-600 dark:text-violet-400 whitespace-nowrap">{formatMoney(c.monthlyRent)}</p>
+                                                    <p className="font-bold text-sm text-violet-600 dark:text-violet-400 whitespace-nowrap">
+                                                        {formatMoney(c.monthlyRent)}
+                                                    </p>
                                                 </td>
                                                 <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">
                                                     <p>{formatDate(c.startDate)}</p>
@@ -246,14 +299,25 @@ export default function AdminContractsPage() {
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex gap-1.5">
-                                                        {[
-                                                            { icon: <FaEye size={12} />, cls: 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200', onClick: () => setModal({ mode: 'view', item: c }) },
-                                                            { icon: <FaEdit size={12} />, cls: 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100', onClick: () => setModal({ mode: 'status', item: c }) },
-                                                            ...(c.status !== 'TERMINATED' && c.status !== 'EXPIRED' ? [{ icon: <FaTimes size={12} />, cls: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 hover:bg-orange-100', onClick: () => setModal({ mode: 'terminate', item: c }) }] : []),
-                                                            { icon: <FaTrash size={12} />, cls: 'bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100', onClick: () => setModal({ mode: 'delete', item: c }) },
-                                                        ].map((b, i) => (
-                                                            <button key={i} onClick={b.onClick} className={`p-2 rounded-lg transition-colors ${b.cls}`}>{b.icon}</button>
-                                                        ))}
+                                                        <button onClick={() => setModal({ mode: 'view', item: c })}
+                                                            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors">
+                                                            <FaEye size={12} />
+                                                        </button>
+                                                        <button onClick={() => setModal({ mode: 'status', item: c })}
+                                                            className="p-2 rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100 transition-colors">
+                                                            <FaEdit size={12} />
+                                                        </button>
+                                                        {c.status !== 'TERMINATED' && c.status !== 'EXPIRED' && (
+                                                            <button onClick={() => setModal({ mode: 'terminate', item: c })}
+                                                                className="p-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 hover:bg-orange-100 transition-colors"
+                                                                title="Hủy hợp đồng">
+                                                                <FaTimes size={12} />
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => setModal({ mode: 'delete', item: c })}
+                                                            className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 transition-colors">
+                                                            <FaTrash size={12} />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -275,23 +339,36 @@ export default function AdminContractsPage() {
                     {pagination && pagination.totalPages > 1 && (
                         <div className="flex items-center justify-center gap-2">
                             <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">← Trước</button>
+                                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                ← Trước
+                            </button>
                             <span className="text-sm text-slate-500 px-3">Trang {page}/{pagination.totalPages}</span>
                             <button disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}
-                                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Sau →</button>
+                                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                Sau →
+                            </button>
                         </div>
                     )}
                 </>
             )}
 
             <AnimatePresence>
-                {modal?.mode === 'view'      && <ViewModal      item={modal.item} onClose={() => setModal(null)} />}
-                {modal?.mode === 'status'    && <StatusModal    item={modal.item} onClose={() => setModal(null)} onSave={updateStatus} />}
-                {modal?.mode === 'terminate' && <TerminateModal item={modal.item} onClose={() => setModal(null)} onConfirm={terminate} />}
+                {modal?.mode === 'view' && (
+                    <ViewModal item={modal.item} onClose={() => setModal(null)} />
+                )}
+                {modal?.mode === 'status' && (
+                    <StatusModal item={modal.item} onClose={() => setModal(null)} onSave={updateStatus} />
+                )}
+                {modal?.mode === 'terminate' && (
+                    <TerminateModal item={modal.item} onClose={() => setModal(null)} onConfirm={terminate} />
+                )}
                 {modal?.mode === 'delete' && (
-                    <ConfirmModal title="Xóa hợp đồng"
+                    <ConfirmModal
+                        title="Xóa hợp đồng"
                         desc="Bạn có chắc chắn muốn xóa hợp đồng này? Hành động không thể hoàn tác."
-                        onConfirm={() => del(modal.item.id)} onClose={() => setModal(null)} />
+                        onConfirm={() => del(modal.item.id)}
+                        onClose={() => setModal(null)}
+                    />
                 )}
             </AnimatePresence>
         </div>

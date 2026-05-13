@@ -78,7 +78,9 @@ export const getProperties = async (req: Request, res: Response) => {
     try {
         const { city, type, minPrice, maxPrice, available } = req.query;
 
-        const where: any = {};
+        const where: any = {
+            approvalStatus: 'APPROVED', // Chỉ hiển thị phòng đã được duyệt
+        };
 
         if (city) where.city = city as string;
         if (type) where.type = type;

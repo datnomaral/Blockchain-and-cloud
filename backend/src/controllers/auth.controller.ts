@@ -253,6 +253,8 @@ export const getProfile = async (req: Request, res: Response) => {
                 fullName: true,
                 phone: true,
                 walletAddress: true,
+                bankAccount: true,
+                bankName: true,
                 role: true,
                 isVerified: true,
                 createdAt: true,
