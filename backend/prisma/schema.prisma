@@ -37,19 +37,26 @@ enum PropertyType {
   HOTEL         // Khách sạn
 }
 
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  passwordHash  String    @map("password_hash")
-  fullName      String    @map("full_name")
+  id            String      @id @default(uuid())
+  email         String      @unique
+  passwordHash  String      @map("password_hash")
+  fullName      String      @map("full_name")
   phone         String?
-  facebook      String?   // Facebook profile URL
-  zalo          String?   // Zalo phone number
-  walletAddress String?   @unique @map("wallet_address")
-  role          Role      @default(TENANT)
-  isVerified    Boolean   @default(false) @map("is_verified")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  facebook      String?
+  zalo          String?
+  walletAddress String?     @unique @map("wallet_address")
+  role          Role        @default(TENANT)
+  isVerified    Boolean     @default(false) @map("is_verified")
+  status        UserStatus  @default(ACTIVE)
+  banReason     String?     @map("ban_reason")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
   // Relations
   ownedProperties   Property[]  @relation("PropertyOwner")
@@ -60,25 +67,27 @@ model User {
 }
 
 model Property {
-  id          String        @id @default(uuid())
-  ownerId     String        @map("owner_id")
-  title       String
-  description String?
-  address     String
-  city        String
-  district    String
-  ward        String
-  type        PropertyType
-  price       Float         // Giá thuê/tháng
-  deposit     Float         // Tiền đặt cọc
-  area        Float?        // Diện tích (m2)
-  bedrooms    Int?
-  bathrooms   Int?
-  images      String[]      // Array of image URLs
-  amenities   String[]      // Tiện nghi
-  available   Boolean       @default(true)
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id               String        @id @default(uuid())
+  ownerId          String        @map("owner_id")
+  title            String
+  description      String?
+  address          String
+  city             String
+  district         String
+  ward             String
+  type             PropertyType
+  price            Float         // Giá thuê/tháng
+  deposit          Float         // Tiền đặt cọc
+  area             Float?        // Diện tích (m2)
+  bedrooms         Int?
+  bathrooms        Int?
+  images           String[]      // Array of image URLs
+  amenities        String[]      // Tiện nghi
+  available        Boolean       @default(true)
+  approvalStatus   String        @default("APPROVED") @map("approval_status") // PENDING | APPROVED | REJECTED
+  rejectionReason  String?       @map("rejection_reason")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
   // Relations
   owner       User          @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -112,6 +121,8 @@ model Contract {
   landlordSignature String?         @map("landlord_signature")
   tenantSignature   String?         @map("tenant_signature")
   signedAt          DateTime?       @map("signed_at")
+  terminateReason   String?         @map("terminate_reason")
+  terminatedAt      DateTime?       @map("terminated_at")
   
   status            ContractStatus  @default(DRAFT)
   createdAt         DateTime        @default(now()) @map("created_at")

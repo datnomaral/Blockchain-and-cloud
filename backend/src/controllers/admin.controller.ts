@@ -289,7 +289,7 @@ export const adminDeleteProperty = async (req: Request, res: Response) => {
  */
 export const adminGetUsers = async (req: Request, res: Response) => {
     try {
-        const { search, role, page = '1', limit = '10' } = req.query;
+        const { search, role, status, page = '1', limit = '10' } = req.query;
 
         const where: any = {};
 
@@ -301,6 +301,7 @@ export const adminGetUsers = async (req: Request, res: Response) => {
             ];
         }
         if (role) where.role = role;
+        if (status) where.status = status;
 
         const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
         const [users, total] = await Promise.all([
@@ -312,6 +313,8 @@ export const adminGetUsers = async (req: Request, res: Response) => {
                     email: true,
                     phone: true,
                     role: true,
+                    status: true,
+                    banReason: true,
                     walletAddress: true,
                     createdAt: true,
                     _count: {
@@ -361,13 +364,15 @@ export const adminGetUserById = async (req: Request, res: Response) => {
                 email: true,
                 phone: true,
                 role: true,
+                status: true,
+                banReason: true,
                 walletAddress: true,
                 facebook: true,
                 zalo: true,
                 createdAt: true,
                 updatedAt: true,
                 ownedProperties: {
-                    select: { id: true, title: true, address: true, price: true, available: true },
+                    select: { id: true, title: true, address: true, price: true, available: true, approvalStatus: true },
                     orderBy: { createdAt: 'desc' },
                     take: 5,
                 },
@@ -415,21 +420,98 @@ export const adminUpdateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { fullName, phone, role } = req.body;
+        const requesterId = (req as any).user.userId;
 
         const existing = await prisma.user.findUnique({ where: { id } });
         if (!existing) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
 
+        if (existing.role === 'ADMIN' && id !== requesterId) {
+            return res.status(403).json({ success: false, message: 'Không thể chỉnh sửa tài khoản Admin khác' });
+        }
+
+        if (id === requesterId && role && role !== 'ADMIN') {
+            return res.status(400).json({ success: false, message: 'Không thể tự thay đổi role của chính mình' });
+        }
+
         const user = await prisma.user.update({
             where: { id },
             data: { fullName, phone, role },
             select: {
-                id: true, fullName: true, email: true, phone: true, role: true, walletAddress: true,
+                id: true, fullName: true, email: true, phone: true, role: true, status: true, walletAddress: true,
             },
         });
 
         res.json({ success: true, message: 'Cập nhật người dùng thành công', data: { user } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * POST /api/admin/users/:id/ban
+ * Khóa tài khoản người dùng
+ */
+export const adminBanUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const requesterId = (req as any).user.userId;
+
+        if (id === requesterId) {
+            return res.status(400).json({ success: false, message: 'Không thể tự khóa tài khoản của mình' });
+        }
+
+        const existing = await prisma.user.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+        }
+
+        if (existing.role === 'ADMIN') {
+            return res.status(403).json({ success: false, message: 'Không thể khóa tài khoản Admin' });
+        }
+
+        if (existing.status === 'BANNED') {
+            return res.status(400).json({ success: false, message: 'Tài khoản đã bị khóa rồi' });
+        }
+
+        const user = await prisma.user.update({
+            where: { id },
+            data: { status: 'BANNED', banReason: reason || 'Vi phạm điều khoản sử dụng' },
+            select: { id: true, fullName: true, email: true, status: true, banReason: true },
+        });
+
+        res.json({ success: true, message: `Đã khóa tài khoản ${user.fullName}`, data: { user } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * POST /api/admin/users/:id/unban
+ * Mở khóa tài khoản người dùng
+ */
+export const adminUnbanUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const existing = await prisma.user.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+        }
+
+        if (existing.status !== 'BANNED') {
+            return res.status(400).json({ success: false, message: 'Tài khoản không bị khóa' });
+        }
+
+        const user = await prisma.user.update({
+            where: { id },
+            data: { status: 'ACTIVE', banReason: null },
+            select: { id: true, fullName: true, email: true, status: true },
+        });
+
+        res.json({ success: true, message: `Đã mở khóa tài khoản ${user.fullName}`, data: { user } });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -450,6 +532,10 @@ export const adminDeleteUser = async (req: Request, res: Response) => {
         const existing = await prisma.user.findUnique({ where: { id } });
         if (!existing) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+        }
+
+        if (existing.role === 'ADMIN') {
+            return res.status(403).json({ success: false, message: 'Không thể xóa tài khoản Admin' });
         }
 
         await prisma.user.delete({ where: { id } });
@@ -550,7 +636,7 @@ export const adminUpdateContractStatus = async (req: Request, res: Response) => 
         const { id } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ['DRAFT', 'PENDING', 'SIGNED', 'ACTIVE', 'EXPIRED', 'CANCELLED'];
+        const validStatuses = ['DRAFT', 'PENDING', 'SIGNED', 'ACTIVE', 'EXPIRED', 'TERMINATED'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
         }
@@ -590,6 +676,258 @@ export const adminDeleteContract = async (req: Request, res: Response) => {
 
         await prisma.contract.delete({ where: { id } });
         res.json({ success: true, message: 'Xóa hợp đồng thành công' });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ==================== DUYỆT PHÒNG ====================
+
+/**
+ * POST /api/admin/properties/:id/approve
+ */
+export const adminApproveProperty = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const existing = await prisma.property.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy phòng' });
+        }
+
+        const property = await prisma.property.update({
+            where: { id },
+            data: { approvalStatus: 'APPROVED', rejectionReason: null },
+            include: { owner: { select: { fullName: true, email: true } } },
+        });
+
+        res.json({ success: true, message: 'Đã duyệt phòng thành công', data: { property } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * POST /api/admin/properties/:id/reject
+ */
+export const adminRejectProperty = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const existing = await prisma.property.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy phòng' });
+        }
+
+        const property = await prisma.property.update({
+            where: { id },
+            data: {
+                approvalStatus: 'REJECTED',
+                rejectionReason: reason || 'Không đáp ứng tiêu chuẩn đăng tin',
+                available: false,
+            },
+            include: { owner: { select: { fullName: true, email: true } } },
+        });
+
+        res.json({ success: true, message: 'Đã từ chối phòng', data: { property } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ==================== HỦY HỢP ĐỒNG (ADMIN) ====================
+
+/**
+ * POST /api/admin/contracts/:id/terminate
+ * Admin hủy hợp đồng với lý do
+ */
+export const adminTerminateContract = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const existing = await prisma.contract.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy hợp đồng' });
+        }
+
+        if (existing.status === 'TERMINATED') {
+            return res.status(400).json({ success: false, message: 'Hợp đồng đã bị hủy rồi' });
+        }
+
+        const contract = await prisma.contract.update({
+            where: { id },
+            data: {
+                status: 'TERMINATED',
+                terminateReason: reason || 'Admin hủy hợp đồng',
+                terminatedAt: new Date(),
+            },
+            include: {
+                property: { select: { title: true } },
+                landlord: { select: { fullName: true } },
+                tenant: { select: { fullName: true } },
+            },
+        });
+
+        res.json({ success: true, message: 'Đã hủy hợp đồng thành công', data: { contract } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ==================== THỐNG KÊ THEO CHỦ NHÀ ====================
+
+/**
+ * GET /api/admin/landlords
+ * Danh sách chủ nhà kèm phòng và người thuê (sơ đồ phân cấp)
+ */
+export const adminGetLandlords = async (req: Request, res: Response) => {
+    try {
+        const { search, status, page = '1', limit = '10' } = req.query;
+
+        const where: any = { role: 'LANDLORD' };
+        if (search) {
+            where.OR = [
+                { fullName: { contains: search as string, mode: 'insensitive' } },
+                { email: { contains: search as string, mode: 'insensitive' } },
+            ];
+        }
+        if (status) where.status = status;
+
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+        const [landlords, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                    status: true,
+                    banReason: true,
+                    walletAddress: true,
+                    createdAt: true,
+                    ownedProperties: {
+                        select: {
+                            id: true,
+                            title: true,
+                            address: true,
+                            city: true,
+                            price: true,
+                            available: true,
+                            approvalStatus: true,
+                            contracts: {
+                                where: { status: { in: ['ACTIVE', 'SIGNED', 'PENDING'] } },
+                                select: {
+                                    id: true,
+                                    status: true,
+                                    monthlyRent: true,
+                                    startDate: true,
+                                    endDate: true,
+                                    tenant: { select: { id: true, fullName: true, email: true, phone: true, status: true } },
+                                },
+                                take: 1,
+                                orderBy: { createdAt: 'desc' },
+                            },
+                        },
+                        orderBy: { createdAt: 'desc' },
+                    },
+                    _count: {
+                        select: { ownedProperties: true, landlordContracts: true },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: parseInt(limit as string),
+            }),
+            prisma.user.count({ where }),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                landlords,
+                pagination: {
+                    total,
+                    page: parseInt(page as string),
+                    limit: parseInt(limit as string),
+                    totalPages: Math.ceil(total / parseInt(limit as string)),
+                },
+            },
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * GET /api/admin/tenants
+ * Danh sách người thuê
+ */
+export const adminGetTenants = async (req: Request, res: Response) => {
+    try {
+        const { search, status, page = '1', limit = '10' } = req.query;
+
+        const where: any = { role: 'TENANT' };
+        if (search) {
+            where.OR = [
+                { fullName: { contains: search as string, mode: 'insensitive' } },
+                { email: { contains: search as string, mode: 'insensitive' } },
+            ];
+        }
+        if (status) where.status = status;
+
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+        const [tenants, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                    status: true,
+                    banReason: true,
+                    walletAddress: true,
+                    createdAt: true,
+                    tenantContracts: {
+                        where: { status: { in: ['ACTIVE', 'SIGNED'] } },
+                        select: {
+                            id: true,
+                            status: true,
+                            monthlyRent: true,
+                            startDate: true,
+                            endDate: true,
+                            property: { select: { title: true, address: true, city: true } },
+                            landlord: { select: { fullName: true, email: true } },
+                        },
+                        take: 3,
+                        orderBy: { createdAt: 'desc' },
+                    },
+                    _count: {
+                        select: { tenantContracts: true },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: parseInt(limit as string),
+            }),
+            prisma.user.count({ where }),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                tenants,
+                pagination: {
+                    total,
+                    page: parseInt(page as string),
+                    limit: parseInt(limit as string),
+                    totalPages: Math.ceil(total / parseInt(limit as string)),
+                },
+            },
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }

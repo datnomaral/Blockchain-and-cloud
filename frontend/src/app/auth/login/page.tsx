@@ -33,7 +33,8 @@ export default function LoginPage() {
                 localStorage.setItem('token', data.data.token);
                 localStorage.setItem('user', JSON.stringify(data.data.user));
                 toast.success('Đăng nhập thành công!');
-                router.push('/dashboard');
+                const role = data.data.user?.role;
+                router.push(role === 'ADMIN' ? '/admin' : '/dashboard');
             } else {
                 toast.error(data.message || 'Đăng nhập thất bại');
             }

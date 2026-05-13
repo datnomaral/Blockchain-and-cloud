@@ -54,7 +54,7 @@ export const createContract = async (req: Request, res: Response) => {
         if (!property) {
             return res.status(404).json({
                 success: false,
-                message: 'KhÃ´ng tÃ¬m tháº¥y phÃ²ng trá»',
+                message: 'Không tìm thấy phòng trọ',
             });
         }
 
@@ -66,7 +66,7 @@ export const createContract = async (req: Request, res: Response) => {
         if (!tenant) {
             return res.status(404).json({
                 success: false,
-                message: 'KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i thuÃª vá»›i email nÃ y. Vui lÃ²ng kiá»ƒm tra láº¡i.',
+                message: 'Không tìm thấy người thuê với email này. Vui lòng kiểm tra lại.',
             });
         }
 
@@ -75,7 +75,7 @@ export const createContract = async (req: Request, res: Response) => {
         if (property.ownerId !== userId) {
             return res.status(403).json({
                 success: false,
-                message: 'Báº¡n khÃ´ng cÃ³ quyá»n táº¡o há»£p Ä‘á»“ng cho phÃ²ng nÃ y',
+                message: 'Bạn không có quyền tạo hợp đồng cho phòng này',
             });
         }
 
@@ -123,14 +123,14 @@ export const createContract = async (req: Request, res: Response) => {
 
         res.status(201).json({
             success: true,
-            message: 'Táº¡o há»£p Ä‘á»“ng thÃ nh cÃ´ng',
+            message: 'Tạo hợp đồng thành công',
             data: { contract },
         });
     } catch (error: any) {
         console.error('Create contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lá»—i khi táº¡o há»£p Ä‘á»“ng',
+            message: error.message || 'Lỗi khi tạo hợp đồng',
         });
     }
 };
@@ -192,7 +192,7 @@ export const getContracts = async (req: Request, res: Response) => {
         console.error('Get contracts error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lá»—i khi láº¥y danh sÃ¡ch há»£p Ä‘á»“ng',
+            message: error.message || 'Lỗi khi lấy danh sách hợp đồng',
         });
     }
 };
@@ -233,7 +233,7 @@ export const getContractById = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng',
+                message: 'Không tìm thấy hợp đồng',
             });
         }
 
@@ -241,7 +241,7 @@ export const getContractById = async (req: Request, res: Response) => {
         if (contract.landlordId !== userId && contract.tenantId !== userId) {
             return res.status(403).json({
                 success: false,
-                message: 'Báº¡n khÃ´ng cÃ³ quyá»n xem há»£p Ä‘á»“ng nÃ y',
+                message: 'Bạn không có quyền xem hợp đồng này',
             });
         }
 
@@ -253,7 +253,7 @@ export const getContractById = async (req: Request, res: Response) => {
         console.error('Get contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lá»—i khi láº¥y thÃ´ng tin há»£p Ä‘á»“ng',
+            message: error.message || 'Lỗi khi lấy thông tin hợp đồng',
         });
     }
 };
@@ -267,6 +267,13 @@ export const signContract = async (req: Request, res: Response) => {
         const { signature, txHash } = req.body;
         const userId = (req as any).user.userId;
 
+        if (!signature) {
+            return res.status(400).json({
+                success: false,
+                message: 'Thiếu chữ ký (signature)',
+            });
+        }
+
         const contract = await prisma.contract.findUnique({
             where: { id },
         });
@@ -274,7 +281,7 @@ export const signContract = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng',
+                message: 'Không tìm thấy hợp đồng',
             });
         }
 
@@ -285,11 +292,33 @@ export const signContract = async (req: Request, res: Response) => {
         if (!isLandlord && !isTenant) {
             return res.status(403).json({
                 success: false,
-                message: 'Báº¡n khÃ´ng cÃ³ quyá»n kÃ½ há»£p Ä‘á»“ng nÃ y',
+                message: 'Bạn không có quyền ký hợp đồng này',
             });
         }
 
-        // Update contract with signature
+        // Chỉ cho phép ký khi hợp đồng ở trạng thái DRAFT hoặc PENDING
+        if (contract.status !== 'DRAFT' && contract.status !== 'PENDING') {
+            return res.status(400).json({
+                success: false,
+                message: `Không thể ký hợp đồng ở trạng thái ${contract.status}`,
+            });
+        }
+
+        // Kiểm tra đã ký chưa
+        if (isLandlord && contract.landlordSignature) {
+            return res.status(400).json({
+                success: false,
+                message: 'Chủ nhà đã ký hợp đồng này rồi',
+            });
+        }
+        if (isTenant && contract.tenantSignature) {
+            return res.status(400).json({
+                success: false,
+                message: 'Người thuê đã ký hợp đồng này rồi',
+            });
+        }
+
+        // Build update data
         const updateData: any = {
             status: 'PENDING',
         };
@@ -300,12 +329,12 @@ export const signContract = async (req: Request, res: Response) => {
             updateData.tenantSignature = signature;
         }
 
-        // If both signatures exist, mark as signed
-        if (
-            (isLandlord && contract.tenantSignature) ||
-            (isTenant && contract.landlordSignature)
-        ) {
-            updateData.status = 'SIGNED';
+        // Tính toán sau khi ký: nếu cả 2 đã ký thì chuyển sang ACTIVE
+        const landlordSigAfter = isLandlord ? signature : contract.landlordSignature;
+        const tenantSigAfter = isTenant ? signature : contract.tenantSignature;
+
+        if (landlordSigAfter && tenantSigAfter) {
+            updateData.status = 'ACTIVE';
             updateData.signedAt = new Date();
             if (txHash) {
                 updateData.blockchainTxHash = txHash;
@@ -336,16 +365,20 @@ export const signContract = async (req: Request, res: Response) => {
             },
         });
 
+        const bothSigned = updatedContract.status === 'ACTIVE';
+
         res.json({
             success: true,
-            message: 'KÃ½ há»£p Ä‘á»“ng thÃ nh cÃ´ng',
+            message: bothSigned
+                ? 'Cả hai bên đã ký! Hợp đồng có hiệu lực.'
+                : 'Ký hợp đồng thành công! Đang chờ bên còn lại ký.',
             data: { contract: updatedContract },
         });
     } catch (error: any) {
         console.error('Sign contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lá»—i khi kÃ½ há»£p Ä‘á»“ng',
+            message: error.message || 'Lỗi khi ký hợp đồng',
         });
     }
 };
@@ -384,13 +417,13 @@ export const verifyContract = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng vá»›i hash nÃ y',
+                message: 'Không tìm thấy hợp đồng với hash này',
             });
         }
 
         res.json({
             success: true,
-            message: 'Há»£p Ä‘á»“ng há»£p lá»‡',
+            message: 'Hợp đồng hợp lệ',
             data: {
                 verified: true,
                 contract: {
@@ -408,7 +441,7 @@ export const verifyContract = async (req: Request, res: Response) => {
         console.error('Verify contract error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Lá»—i khi xÃ¡c minh há»£p Ä‘á»“ng',
+            message: error.message || 'Lỗi khi xác minh hợp đồng',
         });
     }
 };
@@ -433,21 +466,22 @@ export const generateContractPDF = async (req: Request, res: Response) => {
         if (!contract) {
             return res.status(404).json({
                 success: false,
-                message: 'Khong tim thay hop dong',
+                message: 'Không tìm thấy hợp đồng',
             });
         }
 
         if (contract.landlordId !== userId && contract.tenantId !== userId) {
             return res.status(403).json({
                 success: false,
-                message: 'Ban khong co quyen tai PDF hop dong nay',
+                message: 'Bạn không có quyền tải PDF hợp đồng này',
             });
         }
 
+        // Cho phép xuất PDF khi SIGNED hoặc ACTIVE
         if (contract.status !== 'SIGNED' && contract.status !== 'ACTIVE') {
             return res.status(400).json({
                 success: false,
-                message: 'Chi co the xuat PDF sau khi hop dong da ky xong',
+                message: 'Chỉ có thể xuất PDF sau khi hợp đồng đã ký xong',
             });
         }
 
@@ -585,14 +619,14 @@ export const generateContractPDF = async (req: Request, res: Response) => {
             console.error('Generate PDF write error:', err);
             res.status(500).json({
                 success: false,
-                message: 'Loi khi tao file PDF',
+                message: 'Lỗi khi tạo file PDF',
             });
         });
     } catch (error: any) {
         console.error('Generate PDF error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Loi khi tao PDF',
+            message: error.message || 'Lỗi khi tạo PDF',
         });
     }
 };

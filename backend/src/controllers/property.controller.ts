@@ -220,6 +220,18 @@ export const updateProperty = async (req: Request, res: Response) => {
             });
         }
 
+        // Block sửa phòng khi đang có hợp đồng ACTIVE
+        const activeContract = await prisma.contract.findFirst({
+            where: { propertyId: id, status: { in: ['ACTIVE', 'SIGNED'] } },
+        });
+
+        if (activeContract) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không thể chỉnh sửa phòng đang có hợp đồng hiệu lực. Vui lòng hủy hợp đồng trước.',
+            });
+        }
+
         const updatedProperty = await prisma.property.update({
             where: { id },
             data: req.body,
@@ -259,6 +271,18 @@ export const deleteProperty = async (req: Request, res: Response) => {
             return res.status(403).json({
                 success: false,
                 message: 'Bạn không có quyền xóa',
+            });
+        }
+
+        // Block xóa phòng khi đang có hợp đồng ACTIVE
+        const activeContract = await prisma.contract.findFirst({
+            where: { propertyId: id, status: { in: ['ACTIVE', 'SIGNED'] } },
+        });
+
+        if (activeContract) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không thể xóa phòng đang có hợp đồng hiệu lực.',
             });
         }
 

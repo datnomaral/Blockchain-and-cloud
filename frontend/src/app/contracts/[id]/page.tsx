@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { FaFileContract, FaCheckCircle, FaWallet, FaClipboard, FaCopy, FaExternalLinkAlt, FaDownload } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { connectWallet, signMessage } from '@/utils/wallet';
-import { onChainSignContract } from '@/utils/contract';
+import { onChainCreateContract, onChainSignContract, onChainVerifyContract } from '@/utils/contract';
 
 interface Contract {
     id: string;
@@ -104,44 +104,86 @@ export default function ContractDetailPage() {
 
         setSigning(true);
         try {
-            // Check wallet connection
-            if (!walletAddress && !user?.walletAddress) {
+            // Kết nối ví nếu chưa có
+            const currentWalletAddress = walletAddress || user?.walletAddress;
+            if (!currentWalletAddress) {
                 toast.error('Vui lòng kết nối MetaMask trước');
                 await handleConnectWallet();
+                setSigning(false);
                 return;
             }
 
-            // Create message to sign
+            // Tạo message để ký off-chain (xác nhận danh tính)
             const message = `Ký hợp đồng thuê phòng\n\nID: ${contract.id}\nPhòng: ${contract.property.title}\nGiá: ${contract.monthlyRent} VNĐ/tháng\n\nNgười ký xác nhận đồng ý với tất cả điều khoản trong hợp đồng này.`;
-
-            // Sign with MetaMask (off-chain)
             const signature = await signMessage(message);
 
-            // Ghi chữ ký và transaction hash lên blockchain TRƯỚC khi gọi backend
             let txHash: string | undefined;
 
             if (contract.contractHash) {
                 try {
-                    toast.loading('Đang ghi nhận chữ ký lên Blockchain...', { id: 'signing-blockchain' });
+                    const isLandlord = user?.id === contract.landlord.id;
+
+                    // Bước 1: Kiểm tra hợp đồng đã tồn tại trên blockchain chưa
+                    toast.loading('Đang kiểm tra trạng thái Blockchain...', { id: 'signing-blockchain' });
+                    const onChainStatus = await onChainVerifyContract(contract.contractHash);
+
+                    if (!onChainStatus.exists) {
+                        // Hợp đồng chưa tồn tại trên chain
+                        if (!isLandlord) {
+                            // Tenant không thể tạo contract on-chain, chỉ landlord mới được
+                            toast.error(
+                                'Hợp đồng chưa được khởi tạo trên Blockchain. Vui lòng yêu cầu chủ nhà ký trước.',
+                                { id: 'signing-blockchain', duration: 6000 }
+                            );
+                            setSigning(false);
+                            return;
+                        }
+
+                        if (!contract.tenant.walletAddress) {
+                            toast.error(
+                                'Người thuê chưa có địa chỉ ví. Vui lòng yêu cầu người thuê kết nối MetaMask trước.',
+                                { id: 'signing-blockchain', duration: 6000 }
+                            );
+                            setSigning(false);
+                            return;
+                        }
+
+                        // Landlord tạo contract on-chain trước
+                        toast.loading('Đang khởi tạo hợp đồng trên Blockchain...', { id: 'signing-blockchain' });
+                        const createTxHash = await onChainCreateContract({
+                            contractHash: contract.contractHash,
+                            tenantWallet: contract.tenant.walletAddress,
+                            depositAmount: contract.deposit,
+                            monthlyRent: contract.monthlyRent,
+                        });
+                        console.info('createContract txHash:', createTxHash);
+                    }
+
+                    // Bước 2: Ký hợp đồng trên blockchain
+                    toast.loading('Đang ký hợp đồng trên Blockchain...', { id: 'signing-blockchain' });
                     txHash = await onChainSignContract(contract.contractHash);
-                    console.info('On-chain signContract txHash:', txHash);
+                    console.info('signContract txHash:', txHash);
                     toast.success('Chữ ký đã được ghi lên Blockchain!', { id: 'signing-blockchain' });
+
                 } catch (chainError: any) {
-                    console.error('Lỗi khi ký hợp đồng trên blockchain:', chainError);
-                    
-                    const errorMessage = chainError?.message?.includes('user rejected') 
-                        ? 'Bạn đã từ chối giao dịch trên MetaMask. Vui lòng ký lại và xác nhận để hoàn tất.'
-                        : 'Không thể ghi nhận chữ ký lên blockchain. Vui lòng thử lại sau.';
-                    
-                    toast.error(errorMessage, { id: 'signing-blockchain', duration: 5000 });
+                    console.error('Blockchain error:', chainError);
+
+                    let errorMessage = 'Không thể ghi nhận chữ ký lên blockchain. Vui lòng thử lại.';
+                    if (chainError?.message?.includes('user rejected') || chainError?.code === 4001) {
+                        errorMessage = 'Bạn đã từ chối giao dịch trên MetaMask.';
+                    } else if (chainError?.message?.includes('gas')) {
+                        errorMessage = 'Lỗi gas fee. Vui lòng thử lại sau vài giây.';
+                    } else if (chainError?.message) {
+                        errorMessage = `Lỗi blockchain: ${chainError.message.slice(0, 100)}`;
+                    }
+
+                    toast.error(errorMessage, { id: 'signing-blockchain', duration: 6000 });
                     setSigning(false);
-                    return; // Dừng lại, không gọi backend
+                    return;
                 }
-            } else {
-                console.warn('Contract chưa có hash, bỏ qua ghi on-chain');
             }
 
-            // Gọi backend để lưu chữ ký và txHash
+            // Bước 3: Lưu chữ ký vào backend
             const token = localStorage.getItem('token');
             const res = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/contracts/${contract.id}/sign`,
@@ -158,12 +200,13 @@ export default function ContractDetailPage() {
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Ký hợp đồng thành công! ✅');
-                fetchContract(); // Tải lại thông tin hợp đồng
+                toast.success(data.message || 'Ký hợp đồng thành công! ✅');
+                fetchContract();
             } else {
                 toast.error(data.message || 'Không thể lưu chữ ký vào hệ thống');
             }
         } catch (error: any) {
+            console.error('Sign error:', error);
             toast.error(error.message || 'Lỗi khi ký hợp đồng');
         } finally {
             setSigning(false);
@@ -273,10 +316,13 @@ export default function ContractDetailPage() {
                                         📍 {contract.property.address}
                                     </p>
                                 </div>
-                                <span className={`badge px-4 py-2 text-sm font-bold ${contract.status === 'SIGNED' ? 'badge-success' :
+                                <span className={`badge px-4 py-2 text-sm font-bold ${
+                                        contract.status === 'ACTIVE' ? 'badge-success' :
+                                        contract.status === 'SIGNED' ? 'badge-success' :
                                         contract.status === 'PENDING' ? 'badge-warning' : 'badge-info'
                                     }`}>
-                                    {contract.status === 'SIGNED' ? 'ĐÃ KÝ KẾT' :
+                                    {contract.status === 'ACTIVE' ? 'ĐANG HIỆU LỰC' :
+                                        contract.status === 'SIGNED' ? 'ĐÃ KÝ KẾT' :
                                         contract.status === 'PENDING' ? 'CHỜ KÝ' : 'BẢN NHÁP'}
                                 </span>
                             </div>
@@ -354,7 +400,7 @@ export default function ContractDetailPage() {
                                                 <div className="flex items-center justify-between mb-1">
                                                     <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">Transaction Hash</p>
                                                     <a
-                                                        href={`https://mumbai.polygonscan.com/tx/${contract.blockchainTxHash}`}
+                                                        href={`https://amoy.polygonscan.com/tx/${contract.blockchainTxHash}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-xs text-blue-600 hover:underline flex items-center gap-1"
@@ -435,7 +481,7 @@ export default function ContractDetailPage() {
                                             )}
                                         </button>
                                     </>
-                                ) : contract.status === 'SIGNED' ? (
+                                ) : (contract.status === 'SIGNED' || contract.status === 'ACTIVE') ? (
                                     <div className="w-full py-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-center border border-green-200 dark:border-green-800 flex flex-col items-center justify-center gap-1">
                                         <div className="flex items-center gap-2 text-lg">
                                             <FaCheckCircle /> Đã Hoàn Tất

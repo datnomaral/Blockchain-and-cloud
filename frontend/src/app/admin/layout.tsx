@@ -24,7 +24,7 @@ const NAV_ITEMS = [
         group: 'Quản lý',
         items: [
             { href: '/admin/properties', label: 'Danh sách phòng', icon: <FaHome />, exact: false },
-            { href: '/admin/customers', label: 'Khách hàng',        icon: <FaUsers />, exact: false },
+            { href: '/admin/customers', label: 'Chủ nhà & Người thuê', icon: <FaUsers />, exact: false },
             { href: '/admin/contracts', label: 'Hợp đồng',          icon: <FaFileContract />, exact: false },
             { href: '/admin/invoices',  label: 'Thu / Chi',         icon: <FaMoneyBillWave />, exact: false },
         ],
@@ -270,8 +270,9 @@ function SidebarContent({ user, pathname, isActive, onLogout, onClose }: {
 const CRUMB_MAP: Record<string, string> = {
     admin:      'Quản trị',
     properties: 'Danh sách phòng',
-    customers:  'Khách hàng',
+    customers:  'Chủ nhà & Người thuê',
     contracts:  'Hợp đồng',
+    invoices:   'Thu / Chi',
 };
 
 function BreadCrumb({ pathname }: { pathname: string }) {

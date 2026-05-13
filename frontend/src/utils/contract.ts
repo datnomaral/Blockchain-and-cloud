@@ -18,12 +18,33 @@ const toBytes32FromHex = (hash: string): string => {
     if (!hash) {
         throw new Error('Contract hash không hợp lệ');
     }
-
-    // Ensure 0x prefix
     if (!hash.startsWith('0x')) {
         return `0x${hash}`;
     }
     return hash;
+};
+
+/**
+ * Lấy gas overrides phù hợp với Polygon Amoy.
+ * Amoy yêu cầu maxPriorityFeePerGas tối thiểu 25 Gwei.
+ * Chúng ta lấy fee data từ network rồi đảm bảo đủ minimum.
+ */
+const getGasOverrides = async (provider: ethers.BrowserProvider) => {
+    const feeData = await provider.getFeeData();
+
+    // Minimum 30 Gwei để đảm bảo qua được Amoy
+    const MIN_PRIORITY_FEE = ethers.parseUnits('30', 'gwei');
+    const MIN_MAX_FEE = ethers.parseUnits('60', 'gwei');
+
+    const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas && feeData.maxPriorityFeePerGas > MIN_PRIORITY_FEE
+        ? feeData.maxPriorityFeePerGas
+        : MIN_PRIORITY_FEE;
+
+    const maxFeePerGas = feeData.maxFeePerGas && feeData.maxFeePerGas > MIN_MAX_FEE
+        ? feeData.maxFeePerGas
+        : MIN_MAX_FEE;
+
+    return { maxPriorityFeePerGas, maxFeePerGas };
 };
 
 const getContractInstance = async () => {
@@ -40,21 +61,50 @@ const getContractInstance = async () => {
     return { contract, wallet };
 };
 
+/**
+ * Kiểm tra hợp đồng đã tồn tại trên blockchain chưa
+ */
+export const onChainVerifyContract = async (contractHash: string): Promise<{
+    exists: boolean;
+    isActive: boolean;
+    landlordSigned: boolean;
+    tenantSigned: boolean;
+}> => {
+    if (!CONTRACT_ADDRESS) {
+        throw new Error('Chưa cấu hình NEXT_PUBLIC_CONTRACT_ADDRESS');
+    }
+
+    const wallet = await connectWallet();
+    if (!wallet) throw new Error('Chưa kết nối ví');
+
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet.provider);
+    const hashBytes32 = toBytes32FromHex(contractHash);
+
+    const result = await contract.verifyContract(hashBytes32);
+    return {
+        exists: result[0],
+        isActive: result[1],
+        landlordSigned: result[5],
+        tenantSigned: result[6],
+    };
+};
+
 export const onChainCreateContract = async (params: {
     contractHash: string;
     tenantWallet: string;
     depositAmount: number;
     monthlyRent: number;
 }) => {
-    const { contract } = await getContractInstance();
+    const { contract, wallet } = await getContractInstance();
     const hashBytes32 = toBytes32FromHex(params.contractHash);
+    const gasOverrides = await getGasOverrides(wallet.provider);
 
-    // Lưu ý: depositAmount, monthlyRent đang được truyền trực tiếp (đơn vị tuỳ ý, thường là off-chain VND hoặc on-chain token unit)
     const tx = await contract.createContract(
         hashBytes32,
         params.tenantWallet,
-        BigInt(params.depositAmount),
-        BigInt(params.monthlyRent)
+        BigInt(Math.round(params.depositAmount)),
+        BigInt(Math.round(params.monthlyRent)),
+        gasOverrides
     );
 
     const receipt = await tx.wait();
@@ -62,38 +112,41 @@ export const onChainCreateContract = async (params: {
 };
 
 export const onChainSignContract = async (contractHash: string) => {
-    const { contract } = await getContractInstance();
+    const { contract, wallet } = await getContractInstance();
     const hashBytes32 = toBytes32FromHex(contractHash);
+    const gasOverrides = await getGasOverrides(wallet.provider);
 
-    const tx = await contract.signContract(hashBytes32);
+    const tx = await contract.signContract(hashBytes32, gasOverrides);
     const receipt = await tx.wait();
     return receipt?.hash ?? tx.hash;
 };
 
 export const onChainMarkDepositPaid = async (contractHash: string, amount: number) => {
-    const { contract } = await getContractInstance();
+    const { contract, wallet } = await getContractInstance();
     const hashBytes32 = toBytes32FromHex(contractHash);
+    const gasOverrides = await getGasOverrides(wallet.provider);
 
-    const tx = await contract.markDepositPaid(hashBytes32, BigInt(amount));
+    const tx = await contract.markDepositPaid(hashBytes32, BigInt(amount), gasOverrides);
     const receipt = await tx.wait();
     return receipt?.hash ?? tx.hash;
 };
 
 export const onChainRecordRentPayment = async (contractHash: string, amount: number) => {
-    const { contract } = await getContractInstance();
+    const { contract, wallet } = await getContractInstance();
     const hashBytes32 = toBytes32FromHex(contractHash);
+    const gasOverrides = await getGasOverrides(wallet.provider);
 
-    const tx = await contract.recordRentPayment(hashBytes32, BigInt(amount));
+    const tx = await contract.recordRentPayment(hashBytes32, BigInt(amount), gasOverrides);
     const receipt = await tx.wait();
     return receipt?.hash ?? tx.hash;
 };
 
 export const onChainMarkDepositRefunded = async (contractHash: string, amount: number) => {
-    const { contract } = await getContractInstance();
+    const { contract, wallet } = await getContractInstance();
     const hashBytes32 = toBytes32FromHex(contractHash);
+    const gasOverrides = await getGasOverrides(wallet.provider);
 
-    const tx = await contract.markDepositRefunded(hashBytes32, BigInt(amount));
+    const tx = await contract.markDepositRefunded(hashBytes32, BigInt(amount), gasOverrides);
     const receipt = await tx.wait();
     return receipt?.hash ?? tx.hash;
 };
-

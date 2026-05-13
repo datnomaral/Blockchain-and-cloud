@@ -105,6 +105,14 @@ export const login = async (req: Request, res: Response) => {
             });
         }
 
+        // Kiểm tra tài khoản có bị khóa không
+        if ((user as any).status === 'BANNED') {
+            return res.status(403).json({
+                success: false,
+                message: `Tài khoản của bạn đã bị khóa. Lý do: ${(user as any).banReason || 'Vi phạm điều khoản sử dụng'}`,
+            });
+        }
+
         // Generate JWT
         const token = jwt.sign(
             { userId: user.id, email: user.email, role: user.role },

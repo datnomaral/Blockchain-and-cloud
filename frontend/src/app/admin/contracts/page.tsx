@@ -12,12 +12,12 @@ const formatMoney = (n: number) =>
 const formatDate = (d: string | Date) => new Date(d).toLocaleDateString('vi-VN');
 
 const STATUS_MAP: Record<string, { label: string; badgeCls: string; dotCls: string }> = {
-    DRAFT:    { label: 'Bản nháp',      badgeCls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', dotCls: 'bg-slate-400' },
-    PENDING:  { label: 'Chờ ký',        badgeCls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', dotCls: 'bg-amber-500' },
-    SIGNED:   { label: 'Đã ký',         badgeCls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', dotCls: 'bg-blue-500' },
-    ACTIVE:   { label: 'Đang hiệu lực', badgeCls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', dotCls: 'bg-emerald-500' },
-    EXPIRED:  { label: 'Hết hạn',       badgeCls: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400', dotCls: 'bg-red-500' },
-    CANCELLED:{ label: 'Đã hủy',        badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400', dotCls: 'bg-gray-400' },
+    DRAFT:      { label: 'Bản nháp',      badgeCls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', dotCls: 'bg-slate-400' },
+    PENDING:    { label: 'Chờ ký',        badgeCls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', dotCls: 'bg-amber-500' },
+    SIGNED:     { label: 'Đã ký',         badgeCls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', dotCls: 'bg-blue-500' },
+    ACTIVE:     { label: 'Đang hiệu lực', badgeCls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', dotCls: 'bg-emerald-500' },
+    EXPIRED:    { label: 'Hết hạn',       badgeCls: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400', dotCls: 'bg-red-500' },
+    TERMINATED: { label: 'Đã hủy',        badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400', dotCls: 'bg-gray-400' },
 };
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -127,7 +127,7 @@ export default function AdminContractsPage() {
     const [search, setSearch]         = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [page, setPage]             = useState(1);
-    const [modal, setModal]           = useState<{ mode: 'view' | 'status' | 'delete'; item: any } | null>(null);
+    const [modal, setModal] = useState<{ mode: 'view' | 'status' | 'delete' | 'terminate'; item: any } | null>(null);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
 
@@ -150,6 +150,17 @@ export default function AdminContractsPage() {
         const r = await fetch(`${API}/api/admin/contracts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         const d = await r.json();
         if (d.success) { toast.success('Đã xóa hợp đồng'); load(); setModal(null); }
+        else toast.error(d.message);
+    };
+
+    const terminate = async (id: string, reason: string) => {
+        const r = await fetch(`${API}/api/admin/contracts/${id}/terminate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ reason }),
+        });
+        const d = await r.json();
+        if (d.success) { toast.success('Đã hủy hợp đồng'); load(); setModal(null); }
         else toast.error(d.message);
     };
 
@@ -238,6 +249,7 @@ export default function AdminContractsPage() {
                                                         {[
                                                             { icon: <FaEye size={12} />, cls: 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200', onClick: () => setModal({ mode: 'view', item: c }) },
                                                             { icon: <FaEdit size={12} />, cls: 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100', onClick: () => setModal({ mode: 'status', item: c }) },
+                                                            ...(c.status !== 'TERMINATED' && c.status !== 'EXPIRED' ? [{ icon: <FaTimes size={12} />, cls: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 hover:bg-orange-100', onClick: () => setModal({ mode: 'terminate', item: c }) }] : []),
                                                             { icon: <FaTrash size={12} />, cls: 'bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100', onClick: () => setModal({ mode: 'delete', item: c }) },
                                                         ].map((b, i) => (
                                                             <button key={i} onClick={b.onClick} className={`p-2 rounded-lg transition-colors ${b.cls}`}>{b.icon}</button>
@@ -273,8 +285,9 @@ export default function AdminContractsPage() {
             )}
 
             <AnimatePresence>
-                {modal?.mode === 'view'   && <ViewModal   item={modal.item} onClose={() => setModal(null)} />}
-                {modal?.mode === 'status' && <StatusModal item={modal.item} onClose={() => setModal(null)} onSave={updateStatus} />}
+                {modal?.mode === 'view'      && <ViewModal      item={modal.item} onClose={() => setModal(null)} />}
+                {modal?.mode === 'status'    && <StatusModal    item={modal.item} onClose={() => setModal(null)} onSave={updateStatus} />}
+                {modal?.mode === 'terminate' && <TerminateModal item={modal.item} onClose={() => setModal(null)} onConfirm={terminate} />}
                 {modal?.mode === 'delete' && (
                     <ConfirmModal title="Xóa hợp đồng"
                         desc="Bạn có chắc chắn muốn xóa hợp đồng này? Hành động không thể hoàn tác."

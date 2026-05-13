@@ -26,6 +26,14 @@ router.post('/', authMiddleware, createContract);
 router.get('/', authMiddleware, getContracts);
 
 /**
+ * @route   GET /api/contracts/verify/:hash
+ * @desc    Verify contract by hash
+ * @access  Public
+ * IMPORTANT: Must be defined BEFORE /:id to avoid Express matching "verify" as an id
+ */
+router.get('/verify/:hash', verifyContract);
+
+/**
  * @route   GET /api/contracts/:id
  * @desc    Get contract by ID
  * @access  Private
@@ -38,13 +46,6 @@ router.get('/:id', authMiddleware, getContractById);
  * @access  Private
  */
 router.post('/:id/sign', authMiddleware, signContract);
-
-/**
- * @route   GET /api/contracts/verify/:hash
- * @desc    Verify contract by hash
- * @access  Public
- */
-router.get('/verify/:hash', verifyContract);
 
 /**
  * @route   GET /api/contracts/:id/pdf

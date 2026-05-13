@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FaSearch, FaEdit, FaTrash, FaEye, FaSave,
-    FaTimes, FaBed, FaBath, FaPlus
+    FaTimes, FaBed, FaBath, FaPlus, FaCheck, FaBan
 } from 'react-icons/fa';
 import { MdApartment, MdHouse, MdHotel } from 'react-icons/md';
 import toast from 'react-hot-toast';
@@ -53,6 +53,25 @@ function ConfirmModal({ title, desc, onConfirm, onClose }: any) {
                 <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Hủy</button>
                 <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
                     <FaTrash size={12} /> Xóa
+                </button>
+            </div>
+        </Modal>
+    );
+}
+
+function RejectModal({ item, onClose, onConfirm }: any) {
+    const [reason, setReason] = useState('');
+    return (
+        <Modal title={`Từ chối phòng: ${item?.title}`} onClose={onClose}>
+            <p className="text-sm text-slate-500 mb-4">Nhập lý do từ chối để chủ nhà biết cần chỉnh sửa gì.</p>
+            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3}
+                placeholder="VD: Thông tin không đầy đủ, hình ảnh không rõ ràng..."
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-none mb-4" />
+            <div className="flex gap-3">
+                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Hủy</button>
+                <button onClick={() => onConfirm(item.id, reason)}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
+                    <FaBan size={12} /> Từ chối
                 </button>
             </div>
         </Modal>
@@ -198,7 +217,7 @@ export default function AdminPropertiesPage() {
     const [typeFilter, setTypeFilter] = useState('');
     const [availFilter, setAvailFilter] = useState('');
     const [page, setPage]             = useState(1);
-    const [modal, setModal]           = useState<{ mode: 'view' | 'edit' | 'delete' | 'create'; item?: any } | null>(null);
+    const [modal, setModal] = useState<{ mode: 'view' | 'edit' | 'delete' | 'create' | 'reject'; item?: any } | null>(null);
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
 
@@ -237,6 +256,25 @@ export default function AdminPropertiesPage() {
         else toast.error(d.message);
     };
 
+    const approve = async (id: string) => {
+        const r = await fetch(`${API}/api/admin/properties/${id}/approve`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        const d = await r.json();
+        if (d.success) { toast.success('Đã duyệt phòng'); load(); }
+        else toast.error(d.message);
+    };
+
+    const reject = async (id: string, reason: string) => {
+        const r = await fetch(`${API}/api/admin/properties/${id}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ reason }),
+        });
+        const d = await r.json();
+        if (d.success) { toast.success('Đã từ chối phòng'); load(); setModal(null); }
+        else toast.error(d.message);
+    };
+
+    // ─── Render ───────────────────────────────────────────────────────
     return (
         <div className="space-y-6 max-w-7xl">
             {/* Header */}
@@ -252,7 +290,6 @@ export default function AdminPropertiesPage() {
                     <FaPlus size={12} /> Thêm phòng
                 </button>
             </div>
-
             {/* Filter bar */}
             <div className="flex flex-wrap gap-3 bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
                 <div className="relative flex-1 min-w-52">
@@ -298,13 +335,36 @@ export default function AdminPropertiesPage() {
                                 <div className={`h-1.5 w-full ${p.available ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-slate-300 to-slate-400'}`} />
 
                                 <div className="p-5">
-                                    <div className="flex justify-between items-start mb-3">
+                                    <div className="flex justify-between items-start mb-2">
                                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${p.available ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>
                                             {p.available ? '● Còn trống' : '● Đã thuê'}
                                         </span>
                                         <span className="text-xs text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">
                                             {TYPE_MAP[p.type] || p.type}
                                         </span>
+                                    </div>
+
+                                    {/* Approval badge + actions */}
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {p.approvalStatus === 'PENDING' && (
+                                            <>
+                                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">⏳ Chờ duyệt</span>
+                                                <button onClick={() => approve(p.id)} className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 transition-colors flex items-center gap-1">
+                                                    <FaCheck size={9} /> Duyệt
+                                                </button>
+                                                <button onClick={() => setModal({ mode: 'reject', item: p })} className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 hover:bg-red-200 transition-colors flex items-center gap-1">
+                                                    <FaBan size={9} /> Từ chối
+                                                </button>
+                                            </>
+                                        )}
+                                        {p.approvalStatus === 'REJECTED' && (
+                                            <>
+                                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">✗ Từ chối</span>
+                                                <button onClick={() => approve(p.id)} className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 transition-colors flex items-center gap-1">
+                                                    <FaCheck size={9} /> Duyệt lại
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
 
                                     <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1 line-clamp-1">{p.title}</h3>
@@ -378,6 +438,9 @@ export default function AdminPropertiesPage() {
                         onConfirm={() => del(modal.item.id)}
                         onClose={() => setModal(null)}
                     />
+                )}
+                {modal?.mode === 'reject' && (
+                    <RejectModal item={modal.item} onClose={() => setModal(null)} onConfirm={reject} />
                 )}
             </AnimatePresence>
         </div>
