@@ -64,7 +64,7 @@ export default function Footer() {
                     </div>
 
                     {/* Resources */}
-                    <div>
+                    {/* <div>
                         <h3 className="text-white font-bold text-lg mb-4">Tài nguyên</h3>
                         <ul className="space-y-3">
                             {[
@@ -84,19 +84,19 @@ export default function Footer() {
                                 </li>
                             ))}
                         </ul>
-                    </div>
+                    </div> */}
 
                     {/* Contact */}
                     <div>
                         <h3 className="text-white font-bold text-lg mb-4">Liên hệ</h3>
                         <ul className="space-y-3">
-                            <li className="flex items-start gap-3">
+                            {/* <li className="flex items-start gap-3">
                                 <MdLocationOn className="text-primary-400 mt-1 flex-shrink-0" size={20} />
                                 <span className="text-sm">
                                     Đại học Công nghệ Thông tin<br />
                                     TP. Hồ Chí Minh, Việt Nam
                                 </span>
-                            </li>
+                            </li> */}
                             <li className="flex items-center gap-3">
                                 <MdPhone className="text-primary-400 flex-shrink-0" size={20} />
                                 <span className="text-sm">+84 123 456 789</span>
