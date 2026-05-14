@@ -6,6 +6,7 @@ import {
     signContract,
     verifyContract,
     generateContractPDF,
+    renewContract,
 } from '../controllers/contract.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
@@ -53,5 +54,12 @@ router.post('/:id/sign', authMiddleware, signContract);
  * @access  Private
  */
 router.get('/:id/pdf', authMiddleware, generateContractPDF);
+
+/**
+ * @route   POST /api/contracts/:id/renew
+ * @desc    Tenant requests contract renewal → creates new DRAFT contract
+ * @access  Private
+ */
+router.post('/:id/renew', authMiddleware, renewContract);
 
 export default router;

@@ -9,6 +9,7 @@ import userRoutes from './routes/user.routes';
 import chatRoutes from './routes/chat.routes';
 import adminRoutes from './routes/admin.routes';
 import invoiceRoutes from './routes/invoice.routes';
+import { startContractScheduler } from './utils/contractScheduler';
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log(`🤖 GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? '✅ Loaded' : '❌ NOT FOUND'}`);
+    startContractScheduler();
 });
 
 export default app;

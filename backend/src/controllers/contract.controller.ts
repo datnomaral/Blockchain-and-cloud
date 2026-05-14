@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
@@ -630,3 +630,94 @@ export const generateContractPDF = async (req: Request, res: Response) => {
         });
     }
 };
+
+/**
+ * Tenant gửi yêu cầu gia hạn hợp đồng
+ * → Tạo hợp đồng DRAFT mới dựa trên hợp đồng cũ với ngày kết thúc mới
+ */
+export const renewContract = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { newEndDate, monthlyRent } = req.body;
+        const userId = (req as any).user.userId;
+
+        if (!newEndDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng cung cấp ngày kết thúc mới',
+            });
+        }
+
+        const contract = await prisma.contract.findUnique({
+            where: { id },
+            include: { property: true, landlord: true, tenant: true },
+        });
+
+        if (!contract) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy hợp đồng' });
+        }
+
+        // Chỉ người thuê mới được gia hạn
+        if (contract.tenantId !== userId) {
+            return res.status(403).json({ success: false, message: 'Chỉ người thuê mới có thể yêu cầu gia hạn' });
+        }
+
+        // Chỉ gia hạn khi hợp đồng đang ACTIVE hoặc sắp EXPIRED (endDate <= 30 ngày nữa)
+        const daysLeft = Math.ceil((new Date(contract.endDate).getTime() - Date.now()) / 86400000);
+        if (contract.status !== 'ACTIVE' && contract.status !== 'EXPIRED') {
+            return res.status(400).json({ success: false, message: 'Chỉ có thể gia hạn hợp đồng đang hiệu lực hoặc đã hết hạn' });
+        }
+
+        const parsedNewEnd = new Date(newEndDate);
+        const newStart = new Date(contract.endDate);
+        newStart.setDate(newStart.getDate() + 1); // Bắt đầu từ ngày tiếp theo sau khi hết hạn
+
+        if (parsedNewEnd <= newStart) {
+            return res.status(400).json({ success: false, message: 'Ngày kết thúc mới phải sau ngày hiện tại' });
+        }
+
+        const newRent = monthlyRent ?? contract.monthlyRent;
+
+        // Tạo hash mới cho hợp đồng gia hạn
+        const newHash = generateContractHash({
+            propertyId: contract.propertyId,
+            landlordId: contract.landlordId,
+            tenantId: contract.tenantId,
+            startDate: newStart,
+            endDate: parsedNewEnd,
+            monthlyRent: newRent,
+            terms: contract.terms,
+        });
+
+        const renewed = await prisma.contract.create({
+            data: {
+                propertyId: contract.propertyId,
+                landlordId: contract.landlordId,
+                tenantId: contract.tenantId,
+                startDate: newStart,
+                endDate: parsedNewEnd,
+                monthlyRent: newRent,
+                deposit: contract.deposit,
+                paymentDay: contract.paymentDay,
+                terms: contract.terms,
+                contractHash: newHash,
+                status: 'DRAFT',
+            },
+            include: {
+                property: true,
+                landlord: { select: { id: true, fullName: true, email: true, walletAddress: true } },
+                tenant: { select: { id: true, fullName: true, email: true, walletAddress: true } },
+            },
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Yêu cầu gia hạn đã được gửi! Hợp đồng mới đang chờ chủ nhà xác nhận.',
+            data: { contract: renewed },
+        });
+    } catch (error: any) {
+        console.error('Renew contract error:', error);
+        res.status(500).json({ success: false, message: error.message || 'Lỗi khi gia hạn hợp đồng' });
+    }
+};
+
