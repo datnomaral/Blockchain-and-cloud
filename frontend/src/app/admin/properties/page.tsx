@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FaSearch, FaEdit, FaTrash, FaEye, FaSave,
-    FaTimes, FaBed, FaBath, FaPlus, FaCheck, FaBan
+    FaTimes, FaBed, FaBath, FaPlus, FaCheck, FaBan, FaCamera
 } from 'react-icons/fa';
 import { MdApartment, MdHouse, MdHotel } from 'react-icons/md';
 import toast from 'react-hot-toast';
@@ -151,7 +151,20 @@ function EditModal({ item, onClose, onSave }: any) {
         available: item.available ?? true,
         description: item.description || '',
     });
+    const [images, setImages] = useState<string[]>(item.images || []);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const set = (key: string) => (v: any) => setForm(f => ({ ...f, [key]: v }));
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (images.length + files.length > 6) { alert('Tối đa 6 ảnh'); return; }
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (ev) => setImages(prev => [...prev, ev.target?.result as string]);
+            reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+    };
 
     return (
         <Modal title={item.id ? 'Chỉnh sửa phòng' : 'Thêm phòng mới'} onClose={onClose}>
@@ -199,7 +212,35 @@ function EditModal({ item, onClose, onSave }: any) {
                         className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-violet-500 outline-none resize-none transition-all" />
                 </FormRow>
 
-                <button onClick={() => onSave(item.id, form)}
+                {/* Hình ảnh */}
+                <FormRow label={`Hình ảnh (${images.length}/6)`}>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                        {images.map((src, idx) => (
+                            <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                                <img src={src} alt={`Ảnh ${idx + 1}`} className="w-full h-full object-cover" />
+                                <button type="button"
+                                    onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600">
+                                    <FaTimes size={8} />
+                                </button>
+                                {idx === 0 && (
+                                    <span className="absolute bottom-1 left-1 text-[9px] bg-violet-600 text-white px-1.5 py-0.5 rounded font-medium">Bìa</span>
+                                )}
+                            </div>
+                        ))}
+                        {images.length < 6 && (
+                            <button type="button" onClick={() => fileInputRef.current?.click()}
+                                className="aspect-square rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center gap-1 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all text-slate-400 hover:text-violet-500">
+                                <FaCamera size={16} />
+                                <span className="text-[10px] font-medium">Thêm</span>
+                            </button>
+                        )}
+                    </div>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+                    {images.length === 0 && <p className="text-xs text-slate-400">Chưa có ảnh nào.</p>}
+                </FormRow>
+
+                <button onClick={() => onSave(item.id, { ...form, images })}
                     className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-violet-900/30 transition-all">
                     <FaSave size={14} /> Lưu thay đổi
                 </button>
