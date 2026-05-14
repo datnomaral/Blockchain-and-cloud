@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
     createProperty,
     getProperties,
+    getMyProperties,
     getPropertyById,
     updateProperty,
     deleteProperty,
@@ -17,6 +18,13 @@ const router = Router();
  * @access  Private (Landlord only)
  */
 router.post('/', authMiddleware, createProperty);
+
+/**
+ * @route   GET /api/properties/my
+ * @desc    Get all properties of current user (including PENDING/REJECTED)
+ * @access  Private
+ */
+router.get('/my', authMiddleware, getMyProperties);
 
 /**
  * @route   GET /api/properties

@@ -15,6 +15,7 @@ export default function DashboardPage() {
         contracts: 0,
         activeContracts: 0,
     });
+    const [myProperties, setMyProperties] = useState<any[]>([]);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -41,7 +42,8 @@ export default function DashboardPage() {
 
     const fetchStats = async (token: string) => {
         try {
-            const propsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/properties`, {
+            // Dùng /my để lấy tất cả phòng của chủ nhà (kể cả PENDING/REJECTED)
+            const propsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/properties/my`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const propsData = await propsRes.json();
@@ -52,6 +54,7 @@ export default function DashboardPage() {
             const contractsData = await contractsRes.json();
 
             if (propsData.success && contractsData.success) {
+                setMyProperties(propsData.data.properties);
                 setStats({
                     properties: propsData.data.properties.length,
                     contracts: contractsData.data.contracts.length,
@@ -229,6 +232,42 @@ export default function DashboardPage() {
                     </Link>
                 </div>
             </div>
+
+            {/* Danh sách phòng của chủ nhà */}
+            {user.role === 'LANDLORD' && myProperties.length > 0 && (
+                <div className="mt-8 glass-card p-8 rounded-3xl border border-white/20">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold">Phòng của tôi</h2>
+                        <Link href="/properties/create" className="text-sm text-blue-600 hover:underline font-semibold">
+                            + Đăng tin mới
+                        </Link>
+                    </div>
+                    <div className="space-y-3">
+                        {myProperties.map((p: any) => {
+                            const statusMap: Record<string, { label: string; cls: string }> = {
+                                PENDING:  { label: '⏳ Chờ duyệt', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+                                APPROVED: { label: '✅ Đã duyệt',  cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+                                REJECTED: { label: '✗ Từ chối',   cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+                            };
+                            const status = statusMap[p.approvalStatus] || statusMap['PENDING'];
+                            return (
+                                <div key={p.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{p.title}</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">📍 {p.district}, {p.city}</p>
+                                        {p.approvalStatus === 'REJECTED' && p.rejectionReason && (
+                                            <p className="text-xs text-red-500 mt-1">Lý do: {p.rejectionReason}</p>
+                                        )}
+                                    </div>
+                                    <span className={`ml-4 shrink-0 px-3 py-1 rounded-full text-xs font-bold ${status.cls}`}>
+                                        {status.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

@@ -42,6 +42,8 @@ export const createProperty = async (req: Request, res: Response) => {
             data: {
                 ...propertyData,
                 ownerId: userId,
+                approvalStatus: 'PENDING',
+                available: false, // Chưa duyệt thì chưa hiển thị là còn trống
             },
             include: {
                 owner: {
@@ -67,6 +69,37 @@ export const createProperty = async (req: Request, res: Response) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Lỗi khi đăng tin',
+        });
+    }
+};
+
+/**
+ * Get all properties for current user (owner) — bao gồm cả PENDING/REJECTED
+ */
+export const getMyProperties = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.userId;
+
+        const properties = await prisma.property.findMany({
+            where: { ownerId: userId },
+            include: {
+                owner: {
+                    select: { id: true, fullName: true, phone: true },
+                },
+                _count: { select: { contracts: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        res.json({
+            success: true,
+            data: { properties, count: properties.length },
+        });
+    } catch (error: any) {
+        console.error('Get my properties error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Lỗi khi lấy danh sách phòng',
         });
     }
 };
@@ -127,6 +160,7 @@ export const searchProperties = async (req: Request, res: Response) => {
 
         const properties = await prisma.property.findMany({
             where: {
+                approvalStatus: 'APPROVED',
                 OR: [
                     { title: { contains: query as string, mode: 'insensitive' } },
                     { address: { contains: query as string, mode: 'insensitive' } },

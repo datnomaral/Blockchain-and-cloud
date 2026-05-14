@@ -697,7 +697,7 @@ export const adminApproveProperty = async (req: Request, res: Response) => {
 
         const property = await prisma.property.update({
             where: { id },
-            data: { approvalStatus: 'APPROVED', rejectionReason: null },
+            data: { approvalStatus: 'APPROVED', rejectionReason: null, available: true },
             include: { owner: { select: { fullName: true, email: true } } },
         });
 

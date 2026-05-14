@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FaHome, FaMapMarkerAlt, FaDollarSign, FaRulerCombined } from 'react-icons/fa';
+import { FaHome, FaMapMarkerAlt, FaDollarSign, FaRulerCombined, FaCamera, FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 export default function CreatePropertyPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [images, setImages] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -33,6 +35,35 @@ export default function CreatePropertyPage() {
         { value: 'HOTEL', label: '🏨 Khách sạn' },
     ];
     const amenitiesList = ['Wifi', 'Điều hòa', 'Nóng lạnh', 'Tủ lạnh', 'Máy giặt', 'Bếp', 'Ban công', 'Thang máy', 'Bảo vệ', 'Bãi đậu xe'];
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (images.length + files.length > 6) {
+            toast.error('Tối đa 6 ảnh');
+            return;
+        }
+        files.forEach(file => {
+            if (!file.type.startsWith('image/')) {
+                toast.error(`${file.name} không phải file ảnh`);
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error(`${file.name} vượt quá 5MB`);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setImages(prev => [...prev, ev.target?.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+        // Reset input để có thể chọn lại cùng file
+        e.target.value = '';
+    };
+
+    const handleRemoveImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
+    };
 
     const handleAmenityToggle = (amenity: string) => {
         setFormData(prev => ({
@@ -68,14 +99,15 @@ export default function CreatePropertyPage() {
                     area: parseFloat(formData.area),
                     bedrooms: parseInt(formData.bedrooms),
                     bathrooms: parseInt(formData.bathrooms),
+                    images,
                 }),
             });
 
             const data = await res.json();
 
             if (data.success) {
-                toast.success('Đăng tin thành công!');
-                router.push('/properties');
+                toast.success('Đăng tin thành công! Vui lòng chờ admin duyệt.');
+                router.push('/dashboard');
             } else {
                 toast.error(data.message || 'Có lỗi xảy ra');
             }
@@ -292,6 +324,65 @@ export default function CreatePropertyPage() {
                                 className="input-glass"
                             />
                         </div>
+                    </div>
+
+                    {/* Images */}
+                    <div>
+                        <label className="block text-sm font-medium mb-3">
+                            Hình ảnh <span className="text-slate-400 font-normal">(tối đa 6 ảnh, mỗi ảnh ≤ 5MB)</span>
+                        </label>
+
+                        {/* Preview grid */}
+                        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-3">
+                            {images.map((src, idx) => (
+                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 group">
+                                    <img
+                                        src={src}
+                                        alt={`Ảnh ${idx + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveImage(idx)}
+                                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                    >
+                                        <FaTimes size={10} />
+                                    </button>
+                                    {idx === 0 && (
+                                        <span className="absolute bottom-1 left-1 text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-md font-medium">
+                                            Ảnh bìa
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+
+                            {/* Upload button */}
+                            {images.length < 6 && (
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-slate-400 hover:text-blue-500"
+                                >
+                                    <FaCamera size={20} />
+                                    <span className="text-xs font-medium">Thêm ảnh</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={handleImageUpload}
+                        />
+
+                        {images.length === 0 && (
+                            <p className="text-xs text-slate-400">
+                                Chưa có ảnh nào. Nhấn "Thêm ảnh" để tải lên. Ảnh đầu tiên sẽ là ảnh bìa.
+                            </p>
+                        )}
                     </div>
 
                     {/* Amenities */}
