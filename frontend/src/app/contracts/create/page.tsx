@@ -18,6 +18,7 @@ export default function CreateContractPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [properties, setProperties] = useState<Property[]>([]);
+    const [tenantWalletAddress, setTenantWalletAddress] = useState('');
     const [formData, setFormData] = useState({
         propertyId: '',
         tenantEmail: '',
@@ -113,38 +114,55 @@ export default function CreateContractPage() {
             if (data.success) {
                 const contract = data.data.contract;
 
-                // Nếu cả hai bên đều đã có ví, bắt buộc tạo bản ghi hợp đồng trên blockchain
-                if (contract.contractHash && contract.tenant.walletAddress) {
+                // Nếu chủ nhà đã nhập ví người thuê thủ công → lưu vào DB trước
+                const finalTenantWallet = contract.tenant.walletAddress ||
+                    (tenantWalletAddress.startsWith('0x') && tenantWalletAddress.length === 42 ? tenantWalletAddress : null);
+
+                if (!contract.tenant.walletAddress && finalTenantWallet) {
+                    try {
+                        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/admin-set-wallet`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                tenantId: contract.tenant.id,
+                                walletAddress: finalTenantWallet,
+                            }),
+                        });
+                    } catch (_) {
+                        // Không bắt buộc, tiếp tục
+                    }
+                }
+
+                // Nếu có ví người thuê (từ DB hoặc nhập tay) → tạo on-chain luôn
+                if (contract.contractHash && finalTenantWallet) {
                     try {
                         toast.loading('Đang khởi tạo hợp đồng trên Blockchain...', { id: 'blockchain-loading' });
                         
                         const txHash = await onChainCreateContract({
                             contractHash: contract.contractHash,
-                            tenantWallet: contract.tenant.walletAddress,
+                            tenantWallet: finalTenantWallet,
                             depositAmount: contract.deposit,
                             monthlyRent: contract.monthlyRent,
                         });
 
                         console.info('On-chain createContract txHash:', txHash);
                         toast.success('Hợp đồng đã được lưu lên Blockchain!', { id: 'blockchain-loading' });
-                        
                         toast.success('Tạo hợp đồng thành công!');
                         router.push('/contracts');
                     } catch (chainError: any) {
                         console.error('Lỗi khi ghi hợp đồng lên blockchain:', chainError);
-                        
-                        // Xử lý lỗi từ MetaMask (User rejected) hoặc lỗi mạng
-                        const errorMessage = chainError?.message?.includes('user rejected') 
-                            ? 'Bạn đã từ chối giao dịch trên MetaMask. Vui lòng tạo lại và xác nhận để lưu lên Blockchain.'
+                        const errorMessage = chainError?.message?.includes('user rejected')
+                            ? 'Bạn đã từ chối giao dịch trên MetaMask.'
                             : 'Không thể ghi hợp đồng lên blockchain. Vui lòng kiểm tra ví và thử lại.';
-                        
                         toast.error(errorMessage, { id: 'blockchain-loading', duration: 5000 });
                         setLoading(false);
-                        return; // Dừng lại, không chuyển trang
+                        return;
                     }
                 } else {
-                    // Trường hợp này hiếm gặp nếu đã chạy script fix_wallet
-                    toast.success('Hợp đồng đã được tạo (Lưu ý: Chưa có ví người thuê nên chưa lưu lên Blockchain)');
+                    toast.success('Hợp đồng đã được tạo! Vui lòng nhập ví người thuê khi ký.');
                     router.push('/contracts');
                 }
             } else {
@@ -216,6 +234,30 @@ export default function CreateContractPage() {
                         />
                         <p className="mt-1 text-xs text-slate-500">
                             Email của người thuê đã đăng ký trong hệ thống
+                        </p>
+                    </div>
+
+                    {/* Tenant Wallet Address (optional) */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2">
+                            🔑 Địa chỉ ví MetaMask người thuê
+                            <span className="ml-2 text-xs font-normal text-slate-400">(Tuỳ chọn — nhập ngay để ký blockchain nhanh hơn)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={tenantWalletAddress}
+                            onChange={(e) => setTenantWalletAddress(e.target.value.trim())}
+                            className="input-glass font-mono text-sm"
+                            placeholder="0x2Bf2F6c089..."
+                        />
+                        {tenantWalletAddress && (!tenantWalletAddress.startsWith('0x') || tenantWalletAddress.length !== 42) && (
+                            <p className="mt-1 text-xs text-red-500">⚠️ Địa chỉ ví không hợp lệ (phải bắt đầu bằng 0x và có đúng 42 ký tự)</p>
+                        )}
+                        {tenantWalletAddress && tenantWalletAddress.startsWith('0x') && tenantWalletAddress.length === 42 && (
+                            <p className="mt-1 text-xs text-green-600">✅ Địa chỉ ví hợp lệ</p>
+                        )}
+                        <p className="mt-1 text-xs text-slate-500">
+                            Nếu nhập ví người thuê ngay bây giờ, hợp đồng sẽ được đăng ký blockchain ngay khi tạo
                         </p>
                     </div>
 

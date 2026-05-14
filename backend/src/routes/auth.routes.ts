@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, connectWallet, disconnectWallet, getProfile } from '../controllers/auth.controller';
+import { register, login, connectWallet, disconnectWallet, getProfile, adminSetWallet } from '../controllers/auth.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -38,5 +38,12 @@ router.post('/disconnect-wallet', authMiddleware, disconnectWallet);
  * @access  Private
  */
 router.get('/profile', authMiddleware, getProfile);
+
+/**
+ * @route   POST /api/auth/admin-set-wallet
+ * @desc    Landlord manually set tenant's wallet address (when tenant hasn't connected MetaMask)
+ * @access  Private (LANDLORD)
+ */
+router.post('/admin-set-wallet', authMiddleware, adminSetWallet);
 
 export default router;

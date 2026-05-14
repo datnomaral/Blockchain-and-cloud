@@ -47,6 +47,8 @@ export default function ContractDetailPage() {
     const [exportingPdf, setExportingPdf] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
+    const [showTenantWalletModal, setShowTenantWalletModal] = useState(false);
+    const [tenantWalletInput, setTenantWalletInput] = useState('');
 
     useEffect(() => {
         const userData = localStorage.getItem('user');
@@ -139,20 +141,40 @@ export default function ContractDetailPage() {
                             return;
                         }
 
-                        if (!contract.tenant.walletAddress) {
-                            toast.error(
-                                'Người thuê chưa có địa chỉ ví. Vui lòng yêu cầu người thuê kết nối MetaMask trước.',
-                                { id: 'signing-blockchain', duration: 6000 }
-                            );
+                        // Resolve tenant wallet: từ DB hoặc từ input thủ công của chủ nhà
+                        const resolvedTenantWallet = contract.tenant.walletAddress || tenantWalletInput.trim();
+
+                        if (!resolvedTenantWallet || !resolvedTenantWallet.startsWith('0x') || resolvedTenantWallet.length !== 42) {
+                            toast.dismiss('signing-blockchain');
                             setSigning(false);
+                            setShowTenantWalletModal(true);
                             return;
+                        }
+
+                        // Nếu chủ nhà đã nhập ví thủ công, lưu vào backend cho người thuê
+                        if (!contract.tenant.walletAddress && resolvedTenantWallet) {
+                            try {
+                                await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/admin-set-wallet`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                    },
+                                    body: JSON.stringify({
+                                        tenantId: contract.tenant.id,
+                                        walletAddress: resolvedTenantWallet,
+                                    }),
+                                });
+                            } catch (_) {
+                                // Không bắt buộc phải lưu thành công, tiếp tục ký
+                            }
                         }
 
                         // Landlord tạo contract on-chain trước
                         toast.loading('Đang khởi tạo hợp đồng trên Blockchain...', { id: 'signing-blockchain' });
                         const createTxHash = await onChainCreateContract({
                             contractHash: contract.contractHash,
-                            tenantWallet: contract.tenant.walletAddress,
+                            tenantWallet: resolvedTenantWallet,
                             depositAmount: contract.deposit,
                             monthlyRent: contract.monthlyRent,
                         });
@@ -451,6 +473,49 @@ export default function ContractDetailPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Tenant Wallet Input Modal */}
+                            {showTenantWalletModal && (
+                                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                                        <h3 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-100">🔑 Nhập địa chỉ ví người thuê</h3>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                                            Người thuê chưa kết nối MetaMask. Bạn có thể nhập thủ công địa chỉ ví của họ để tiến hành ký hợp đồng.
+                                        </p>
+                                        <div className="mb-1 text-xs text-slate-500">Ví người thuê đã cung cấp:</div>
+                                        <input
+                                            type="text"
+                                            value={tenantWalletInput}
+                                            onChange={(e) => setTenantWalletInput(e.target.value)}
+                                            placeholder="0x2Bf2F6c089..."
+                                            className="w-full border-2 border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-mono mb-4 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+                                        />
+                                        {tenantWalletInput && (!tenantWalletInput.startsWith('0x') || tenantWalletInput.length !== 42) && (
+                                            <p className="text-xs text-red-500 mb-3">⚠️ Địa chỉ ví không hợp lệ (phải bắt đầu bằng 0x và có 42 ký tự)</p>
+                                        )}
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => setShowTenantWalletModal(false)}
+                                                className="flex-1 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                            >
+                                                Hủy
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (tenantWalletInput.startsWith('0x') && tenantWalletInput.length === 42) {
+                                                        setShowTenantWalletModal(false);
+                                                        handleSign();
+                                                    }
+                                                }}
+                                                disabled={!tenantWalletInput.startsWith('0x') || tenantWalletInput.length !== 42}
+                                                className="flex-1 py-3 btn-gradient rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                ✅ Xác nhận & Ký
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Actions */}
                             <div className="sticky top-6 space-y-3">

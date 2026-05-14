@@ -281,3 +281,78 @@ export const getProfile = async (req: Request, res: Response) => {
         });
     }
 };
+
+/**
+ * Landlord set wallet address for tenant (when tenant hasn't connected MetaMask yet)
+ */
+export const adminSetWallet = async (req: Request, res: Response) => {
+    try {
+        const requesterId = (req as any).user.userId;
+        const { tenantId, walletAddress } = req.body;
+
+        if (!tenantId || !walletAddress) {
+            return res.status(400).json({
+                success: false,
+                message: 'Thiếu tenantId hoặc walletAddress',
+            });
+        }
+
+        // Validate wallet address format
+        if (!/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Địa chỉ ví không hợp lệ',
+            });
+        }
+
+        // Requester must be a landlord who has a contract with this tenant
+        const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+        if (!requester || requester.role !== 'LANDLORD') {
+            return res.status(403).json({
+                success: false,
+                message: 'Chỉ chủ nhà mới có thể thực hiện thao tác này',
+            });
+        }
+
+        // Check requester has a contract with this tenant
+        const sharedContract = await prisma.contract.findFirst({
+            where: {
+                landlordId: requesterId,
+                tenantId: tenantId,
+            },
+        });
+
+        if (!sharedContract) {
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn không có hợp đồng với người thuê này',
+            });
+        }
+
+        // Check wallet not already used by another account
+        const existingWallet = await prisma.user.findUnique({ where: { walletAddress } });
+        if (existingWallet && existingWallet.id !== tenantId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ví này đã được kết nối với tài khoản khác',
+            });
+        }
+
+        // Update tenant wallet
+        await prisma.user.update({
+            where: { id: tenantId },
+            data: { walletAddress },
+        });
+
+        res.json({
+            success: true,
+            message: 'Đã cập nhật địa chỉ ví người thuê',
+        });
+    } catch (error: any) {
+        console.error('Admin set wallet error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Lỗi khi cập nhật ví người thuê',
+        });
+    }
+};
