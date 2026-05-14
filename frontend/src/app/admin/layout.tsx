@@ -124,14 +124,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Link
+                            {/* <Link
                                 href="/"
                                 target="_blank"
                                 className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
                             >
                                 <FaExternalLinkAlt size={11} />
                                 Xem trang chủ
-                            </Link>
+                            </Link> */}
                             {user && (
                                 <div className="flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-700">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
