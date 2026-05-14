@@ -55,10 +55,10 @@ export default function HomePage() {
                             transition={{ delay: 0.4 }}
                             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                         >
-                            <Link href="/auth/register" className="btn-gradient px-8 py-4 text-lg">
+                            {/* <Link href="/auth/register" className="btn-gradient px-8 py-4 text-lg">
                                 <FaRocket className="inline-block mr-2" />
                                 Bắt Đầu Ngay
-                            </Link>
+                            </Link> */}
                             <Link
                                 href="/contracts"
                                 className="px-8 py-4 text-lg font-semibold text-primary-600 dark:text-primary-400 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-xl border border-primary-200 dark:border-primary-800 hover:bg-white dark:hover:bg-slate-800 transition-all duration-300 shadow-lg"
