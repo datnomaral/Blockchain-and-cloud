@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaRobot, FaPaperPlane, FaTimes, FaMinus, FaCommentDots, FaMapMarkerAlt, FaDollarSign, FaSearch, FaFileContract, FaPlusCircle, FaInfoCircle } from 'react-icons/fa';
 import Link from 'next/link';
@@ -63,6 +64,7 @@ interface Property {
 }
 
 export default function Chatbot() {
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -180,6 +182,8 @@ export default function Chatbot() {
     };
 
     return (
+        // Ẩn chatbot trên trang admin
+        pathname?.startsWith('/admin') ? null :
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
             <AnimatePresence>
                 {isOpen && (
