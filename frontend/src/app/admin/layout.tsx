@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Toaster } from 'react-hot-toast';
 import {
     FaChartBar, FaHome, FaUsers, FaFileContract,
     FaSignOutAlt, FaBars, FaTimes, FaShieldAlt,
@@ -159,22 +158,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </motion.div>
                 </main>
             </div>
-
-            <Toaster
-                position="top-right"
-                toastOptions={{
-                    duration: 4000,
-                    style: {
-                        background: 'rgba(255,255,255,0.95)',
-                        backdropFilter: 'blur(10px)',
-                        color: '#1e293b',
-                        border: '1px solid rgba(226,232,240,0.5)',
-                        padding: '14px 16px',
-                        borderRadius: '12px',
-                        fontSize: '14px',
-                    },
-                }}
-            />
         </div>
     );
 }
